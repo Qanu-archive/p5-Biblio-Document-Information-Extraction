@@ -1,0 +1,488 @@
+Multiscale 3D Shape Analysis Using
+Spherical Wavelets
+Delphine Nain1 , Steven Haker2 , Aaron Bobick1 , and Allen R. Tannenbaum3
+1
+
+3
+
+College of Computing, Georgia Institute of Technology, Atlanta, GA 30332-0280
+delfin@cc.gatech.edu,
+2
+Department of Radiology, Surgical Planning Laboratory,
+Brigham and Women’s Hospital, Boston, MA 02115
+Electrical Engineering, Georgia Institute of Technology, Atlanta, GA 30332-0250
+Abstract. Shape priors attempt to represent biological variations
+within a population. When variations are global, Principal Component
+Analysis (PCA) can be used to learn major modes of variation, even from
+a limited training set. However, when signiﬁcant local variations exist,
+PCA typically cannot represent such variations from a small training set.
+To address this issue, we present a novel algorithm that learns shape variations from data at multiple scales and locations using spherical wavelets
+and spectral graph partitioning. Our results show that when the training
+set is small, our algorithm signiﬁcantly improves the approximation of
+shapes in a testing set over PCA, which tends to oversmooth data.
+
+1
+
+Introduction
+
+Shape priors are commonly used to constrain shapes obtained during the segmentation and registration of biomedical images. Some of the ﬁrst shape priors
+were based on local smoothness constraints [1] via elastic forces or combinations
+of global and local constraints [2] within the active contour framework. One
+limitation of these models is possible convergence to suboptimal shapes due to
+high ﬂexibility in deformations. Statistical shape models were devised to overcome such drawbacks by learning a shape model from a training set. In [3] PCA
+was used in a framework called Active Shape Models (ASM) and has become
+a standard technique for segmentation tasks [4,3]. The advantage of using PCA
+as a shape prior is to restrict the segmentation task to a subspace of allowable
+shapes. However, it has two major limitations. First, it often restricts deformable
+shape too much, particularly if it has been trained on a relatively small number
+of samples. Second, ﬁner, more local variations of shapes are often not encoded
+in eigenvectors representing the most global modes of variation in the shapes.
+To address this issue, the authors in [5] have proposed a hierarchical active
+shape model framework for contours in 2D medical imagery using wavelets, with
+convincing results. We propose to extend this framework in two novel ways.
+First we describe a multiscale representation of surfaces in 3D medical imagery
+using conformal mapping and spherical wavelets. Further, we present a novel
+algorithm to discover optimal independent multiscale shape variations from the
+data. Spherical wavelets have been used primarily by the computer graphics community to generate multiresolution description of 3D shapes [6]. In [7], spherical
+J. Duncan and G. Gerig (Eds.): MICCAI 2005, LNCS 3750, pp. 459–467, 2005.
+c Springer-Verlag Berlin Heidelberg 2005
+
+460
+
+D. Nain et al.
+
+wavelets are used to analyze a manifold not topologically equivalent to a sphere
+by doing a non-bijective mapping between the manifold and the sphere via the
+normals. This work does not conduct statistical analysis of a shape population
+and uses a basis deﬁned on the sphere, not on the shape.
+To the best of our knowledge, this is the ﬁrst application of statistical analysis
+to a population of 3D surfaces using spherical wavelets. By using a spherical
+wavelet basis deﬁned on the shapes and identifying independent multiscale shape
+variations, we build more accurate shape priors.
+
+2
+
+Shape Acquisition and Registration
+
+In this paper, we used a dataset of 39 prostate gland shapes obtained from MR
+imaging. In these images 1 the prostate capsule is visible and was manually segmented by a radiologist. Each manual segmentation deﬁned a 3D surface which
+was extracted as a triangulated surface using the Marching Cubes algorithm. We
+registered all prostate shapes in the dataset by re-triangulating the extracted
+surfaces in a consistent manner, providing a point-by-point registration of all
+surfaces in the dataset. This re-triangulation was done by ﬁrst mapping each
+surface to the sphere using a conformal (angle-preserving) mapping technique
+as described in [8]. 6 Expert-speciﬁed landmark points were used to improve
+the consistency of the spherical mappings. Next, interpolation was used to ﬁnd
+the coordinates of the original 3D surface at the vertices of a regular multiscale
+subdivision of the sphere, having an octahedral structure at its coarsest scale.
+Once corresponding points were identiﬁed, a Procrustes technique was used to
+align the shapes in the original coordinate system.
+
+3
+
+Shape Representation
+
+Once registered, all shapes have N vertices and each shape can be described by
+its three coordinate functions, x, y, z ∈ R such that the k th shape Sk is a column
+vector of size 3N : Sk = [xk (1), ..., xk (N ), yk (1), ..., yk (N ), zk (1), ..., zk (N )]T .
+Since all vertices in the shape population are registered, we interpret each
+entry of Sk as a random variable and each shape as a realization from a multivariate probability distribution. A population of K shapes can be described by a
+K
+1
+mean shape S = K ( k=1 Sk ) and a set of transformations T = [T1 , ..., TM ] that
+describe the variability observed in the population. Each transformation vector
+Tm is of size 3N where the ith entry is a transformation applied to the ith entry
+of the mean shape with a corresponding magnitude βm ∈ R.
+Each transformation vector, or variation mode, can be characterized by scale,
+spatial location and magnitude. For scale, the variation can be global, meaning it
+applies to all vertices of the shape (all of its entries are non-zero) or local, meaning
+it is a sparse vector with a few non-zero entries. The non-zero entries determine
+the spatial location of the variation. Characterization of local variations could
+be important for shape analysis since a disease, such as cancer, could aﬀect only
+1
+
+Axial, T2-weighted, 120mm ﬁeld of view, matrix size 256 × 256, 3.0mm thickness,
+0.5mm gap, 1.5T, using both endorectal and pelvic coil arrays.
+
+Multiscale 3D Shape Analysis Using Spherical Wavelets
+
+461
+
+a portion of an organ’s surface. Therefore descriptive shape priors should discern
+shape variations at diﬀerent scales and spatial location.
+
+4
+
+Limitation of PCA in Representing Finer Shape Details
+
+Active shape models (ASM) [3] use principal component analysis (PCA) to discover uncorrelated shape variations from a training set. ASM assumes that training shapes have a multivariate normal distribution. The modes of variation are
+the eigenvectors of the data covariance matrix (major axes of the distribution).
+If the training set is small, PCA favors discovery of signiﬁcant global variations over local variations. Indeed, assuming a training set of K shapes with N
+vertices (N
+K), the rank of the covariance matrix, and number of eigenvectors, will be at most K − 1. It can be shown that the eigenvectors associated
+with the largest eigenvalues of the covariance matrix describe the most signiﬁcant modes of variation in the vertices [3]. This can be a feature of PCA, since
+it will enforce a global smoothness constraint on shapes, but also a limitation if
+shapes have important local variations, as will be shown in Section 6.
+
+5
+
+Multiscale Shape Prior Using Spherical Wavelets
+
+In this Section, we describe our technique to model the full range of variation
+in a population. We ﬁrst derive a multiscale analysis of the variation of shapes
+in section 5.1. Section 5.2 details our shape prior for multiscale statistical shape
+analysis. Section 6 shows our results and compares our technique with ASM.
+5.1
+
+Description of Spherical Wavelets
+
+To address this limitation, we propose a shape prior that represents variations
+at diﬀerent scales and spatial locations. This can be achieved with wavelet basis
+functions that are localized in space and characteristic scales and therefore match
+a wide range of signal characteristics, from high frequency edges to slowly varying harmonics [9]. Spherical wavelets are second-generation wavelets adapted to
+manifolds with non-regular grids. We brieﬂy sketch their construction [10].
+Subdivision: Spherical wavelets analyze signals on a mesh obtained from recursive partitioning of a mesh with spherical topology. With the technique described
+in Section 2, all shapes have the required mesh to conduct the analysis. We denote the set of all vertices obtained after j subdivisions with an index set K(j).
+The j + 1th resolution mesh is obtained by introducing new nodes, identiﬁed
+by an index set M (j) which subdivide existing edges (typically at their midpoint). The complete set of nodes in the j + 1th resolution mesh is given by
+K(j + 1) = K(j) M (j) and shown in Figure 1(a) which represents a portion
+of a triangular surface mesh at resolution j + 1.
+Representation of shape functions: Let S be a surface and let x ∈ R3 be a
+point on S. To approximate a function f(x) we use a set of wavelet and scaling
+basis functions deﬁned on the shape and modulated by coeﬃcients. For each
+resolution level, ϕj,. (x) are hat-shaped scaling functions2 deﬁned at the nodes
+2
+
+Varies linearly from value 1 at the vertex xk to 0 at neighboring vertices.
+
+462
+
+D. Nain et al.
+
+(a) grid
+
+(b) j = 2
+
+(c) j = 4
+
+(d) j = 1
+
+(e) j = 4
+
+Fig. 1. (a) Subdivision Grid. (b,c) Scaling (d,e) Wavelet Function for Diﬀerent Nodes
+
+(a) shape
+
+(b) res. 0
+
+(c) res. 1
+
+(d) res. 2
+
+(e) res. 3
+
+(f) res. 4
+
+Fig. 2. Shape at various resolution levels, see text for details
+
+k ∈ K(j) and ψj,. (x) are wavelet functions deﬁned at nodes m ∈ M (j). Wavelet
+functions capture ﬁner features since they are composed of higher resolution
+(j + 1) scaling functions. Figures 1(b)- 1(e) show scaling and wavelet functions
+for diﬀerent values of j,k and m. Note that the support of the functions becomes
+smaller as the resolution increases.
+When a shape is transformed into the wavelet domain, its wavelet coeﬃcients
+are calculated 3 for all resolution levels:
+f (x) =
+
+λ0,k ϕ0,k (x) +
+k∈K(0)
+
+γj,m ψj,m (x).
+
+(1)
+
+0≤j m∈M(j)
+
+A shape is represented by its lowest resolution scaling coeﬃcients and its wavelet
+coeﬃcients at all higher resolution levels. The total number of coeﬃcients calculated by the transform is equal to the number of points representing the shape.
+Each coeﬃcient describes features at a particular scale and spatial location.
+Wavelet transform of the Prostate Data: We have applied the wavelet
+transform to prostate data to analyze multiscale variations in the population.
+We ﬁrst subtract the mean shape from all the shapes in the set. We then apply the
+transform independently to the residual x,y and z coordinates of the N vertices
+of the shape. The k th shape in a population of K shapes can be described by a
+vector of wavelet coeﬃcients of size 3N :
+y
+x
+z
+Γk = {λx , λy , λz , γj,m , γj,m , γj,m |j = 0, .., 4; m ∈ M (j); k ∈ K(0)}
+0,k
+0,k
+0,k
+
+(2)
+
+Figure 2 shows a wavelet decomposition of a prostate. Figure 2(a) is the shape
+before decomposition. Each Figure 2(b)- 2(f) is the mean shape plus the cumulative signals up to that resolution. We observe more high frequency content as
+the resolution increases.
+3
+
+By inner product with dual functions, see [10] for more details.
+
+Multiscale 3D Shape Analysis Using Spherical Wavelets
+
+5.2
+
+463
+
+Spherical Wavelets and Construction of Shape Priors
+
+The shape prior is the multivariate probability distribution of the coeﬃcients,
+estimated from their covariance matrix Γ Γ T . In our experiments, we have observed a very sparse covariance matrix with most of the dependency between
+coeﬃcients at the same scale. Furthermore, for each scale we have observed clusters of correlated coeﬃcients. This is consistent with the decorrelation property
+of the wavelet transform for real-world signals [9]. Given the sparseness of the
+covariance matrix, we approximate the joint distribution of coeﬃcients with the
+product of distributions over smaller clusters of correlated coeﬃcients.
+Adaptive Band Selection by scale-space decomposition: For each scale,
+we cluster highly correlated coeﬃcients into a band, with the constraint that
+coeﬃcients across bands have minimum cross-correlation. Our technique is different from [5] where the authors perform a scale-space frequency decomposition of the coeﬃcients by clustering coeﬃcients of spatially adjacent bases into
+bands in each frequency plane. In this work, we cluster coeﬃcients according
+to correlation to pick meaningful bands that indicate areas of variation. Such a
+decomposition can in itself be interesting for shape analysis.
+To cluster correlated wavelet coeﬃcients, we use a spectral graph partitioning
+technique [11]. We use a fully connected undirected graph G = (V, E) where
+nodes V are wavelet coeﬃcients for a particular scale. The weight on each edge
+w(i, j) is the covariance between the wavelet coeﬃcients at nodes i and j. A
+cut(A, B) = u∈A,v∈B w(u, v) is the optimal partitioning of V into two disjoint
+sets A and B such that nodes within a partition have the highest covariance and
+nodes across partitions have the lowest covariance.
+Using this technique, we do a recursive partitioning of the coeﬃcients into
+bands. We use a stopping criteria based on the quality of the decomposition of
+each set, validating whether the subdivided band correspond to two independent
+distributions. Indeed, if we start with a graph G where we consider each coeﬃcient to be a random variable and ﬁnd a partition A ∪ B = G, A ∩ B = ∅, then
+
+(a) B0,1 , A
+
+(b) B0,1 , P
+
+(c) B2,1 A
+
+(d) B2,1 , P
+
+(e) B(2,2) , A
+
+(f) B2,2 , P
+
+(g) B2,3 , A
+
+(h) B2,3 , P
+
+Fig. 3. Band Decomposition: various bands Bj,i , where j is the resolution and i is the
+band number, shown in Anterior view (A) and Posterior view (P), see text for color
+
+464
+
+D. Nain et al.
+
+it is a good partition if P (G) = P (A)P (B). We can test this with the KullbackLeibler (KL) divergence between the joint and the product of the marginals.
+In this work, we assume a multivariate Gaussian distribution for each partition and derived the KL divergence [12]:
+D(P (G)||P (A)P (B)) = 1/2 log(|ΣA ||ΣB |) − 1/2 log(|ΣG |)
+
+(3)
+
+where ΣA is the covariance matrix of P (A) and |.| is the determinant 4 . If the
+distributions P (A) and P (B) are independent, then their KL divergence is 0. In
+practice, we do not accept a partition if D(P (G)||P (A)P (B)) > 0.1.
+Band Visualization: To visualize the bands, we calculate the inﬂuence of all
+wavelet coeﬃcient in band Bj,i on each point x of the surface by setting those
+coeﬃcients to 1 in (1) and others to 0. If f (x) = 0, then the point is not aﬀected
+and if f (x) > 0 it is aﬀected according to the magnitude of f (x). Using this
+function as a colormap (blue= 0, red= 1), Figures 3(a)- 3(b) show the ﬁrst band
+for the lowest scale. The second band is the complement of the ﬁrst. As expected
+each band has a large spatial extent and indicate two uncorrelated shape processes on the prostate data: the variation of the anterior wall of the prostate
+(typically rounded) and the variation of the posterior wall of the prostate (typically ﬂatter). Figures 3(c)- 3(h) show three bands for the scale 3. These bands
+are more localized. These are uncorrelated variations of the superior and inferior
+walls of the shape, as well as an uncorrelated variations of the anterior wall at
+that scale. Bands have compact support, though this is not a constraint of our
+technique. The symmetry in bands 2 and 3 is also interesting, showing that both
+the right and left side tend to co-vary similarly. This symmetry of variation is
+plausible for the prostate, and we plan to investigate this further. Notably a
+diseased organ could possibly be detected if there is a lack of symmetry.
+Building the Prior: Each band of coeﬃcients is modeled as a multivariate
+Gaussian that encodes a set of shape variations. To estimate their distribution
+from the data, we apply PCA analysis to the coeﬃcients in each band. The eigenvectors and eigenvalues of lower scale bands represent relatively global aspects
+of shape variability, whereas bands at higher scales represent higher frequency
+and more localized aspects of shape variability. Hence, our technique discovers
+shape processes at every scale, where the processes are all the eigenvectors of all
+the bands, and does not favor the discovery of global processes over local processes. Additionally, our prior accurately encodes ﬁner details even with small
+training sets, since there exists at least B(K − 1) eigenvectors for each scale with
+B bands.
+
+6
+
+Experiments
+
+We compare our technique to PCA for the task of reconstruction. We partition
+our data randomly into T training samples and 39 − T testing samples, where
+T = [5, 10, 20, 30] and learn a shape prior from the training set. The prior for
+4
+
+In practice since ΣA is often singular, we decompose it using SVD as ΣA = U ΣA U T
+and estimate log|ΣA | = trace(log(ΣA )), using only the positive entries of ΣA .
+
+Multiscale 3D Shape Analysis Using Spherical Wavelets
+
+465
+
+PCA consists of the mean shape, the eigenvectors and eigenvalues. The prior for
+our technique consists of the mean shape, the bands structure, the eigenvectors
+and eigenvalues for each band. We then reconstruct shapes in the testing set.
+For PCA, we project the training shape coordinates onto the eigenvectors
+and translate the coordinates of the new shape to a point lying at a reasonable
+distance of the training data (± 3 standard deviation) to obtain a reconstructed
+shape. For our technique, we transform the shape to its wavelet coeﬃcients,
+project and correct the coeﬃcients for each band separately, and transform the
+new coeﬃcients back to a reconstructed shape. A mean squared error between
+the vertices of the ground truth and the reconstructed shape is calculated for all
+shapes in the testing set.
+Figure 4 shows the reconstruction error with the multiscale prior (solid line).
+It is signiﬁcantly smaller than for PCA (dashed line) across all training set sizes.
+100% Evalues, PCA vs Mscale
+
+mean squared error for all testing shapes
+
+0.035
+
+PCA
+Mscale
+
+0.03
+
+0.025
+
+0.02
+
+0.015
+
+0.01
+
+0.005
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+number of shapes used for training
+
+Fig. 4. Mean Squared Reconstruction Error for various training set sizes
+
+(a) GT
+
+(b) PCA
+
+(c) Mscale
+
+(d) GT
+
+(e) PCA
+
+(f) Mscale
+
+(g) GT
+
+(h) PCA
+
+(i) Mscale
+
+(j) GT
+
+(k) PCA
+
+(l) Mscale
+
+Fig. 5. Ground Truth (GT) and reconstruction with PCA and Multiscale priors (a-f)
+5 training samples (g-l) 30 training samples. Color is error from blue (lowest) to red.
+
+466
+
+D. Nain et al.
+
+The error for PCA signiﬁcantly increases when the training set size decreases,
+but only slightly increases for the multiscale technique.
+Figures 5(a), 5(d), show a ground truth test shape and 5(b), 5(e), 5(c), 5(f),
+its reconstruction with the PCA and multiscale shape priors built from 5 training
+shapes. For PCA, the reconstruction is very smooth. Many of the ﬁner details are
+lacking in the reconstruction. The multiscale technique incorporates both local
+and global details that PCA does not encode. Figures 5(g), 5(j) show a ground
+truth test shape and 5(h), 5(k), 5(i), 5(l) its reconstruction from 30 training
+shapes. For PCA, the reconstruction is more accurate, but still lacks some ﬁner
+details, such as the sharper edges. Again, the multiscale technique incorporates
+both local and global details that PCA misses.
+
+7
+
+Conclusions and Future Work
+
+We have demonstrated that our spherical wavelet based technique is a better
+shape prior than ordinary PCA when it is important to represent ﬁner, more
+localized shape variation. Our novel method ﬁnds independent shape variation
+processes at multiple scales and multiple locations by adaptively clustering correlated wavelet coeﬃcients. The visualization of the bands can, in itself, be an
+interesting tool for shape analysis. We plan in future work to compare this choice
+of L2 basis to other natural bases such as spherical harmonics [13], as well as
+investigate the use of wavelet packets [14]. We also plan to use it for key imaging
+tasks such as segmentation. Further, we intend to build on this theory in order
+to derive a natural multiscale description for discriminative shape analysis. Localized processes cannot be overlooked when discriminating among populations,
+making this technique promising for localized lesions, such as tumors. Finally,
+we will be applying this methodology to other types of structures, in particular,
+to the caudate nucleus as part of our research in schizophrenia.
+Acknowledgements. This work is part of the National Alliance for Medical
+Image Computing (NAMIC), funded through the NIH Roadmap for Medical
+Research, Grant U54 EB005149. A. Tannenbaum and D. Nain’s work was also
+funded by NIH NAC grant P41 RR-13218 and S. Haker’s work is supported by
+NIH grants R01CA109246, R01LM007861, R01CA1029246 and P41RR019703.
+
+References
+1. Kass, M., Witkin, A., Terzopoulos, D.: Snakes: Active contour models. Int. J.
+Comput. Vis 1 (1987) 321–331
+2. Terzopoulos, D., Metaxas, D.: Dunamic 3d models with local and global deformations: Deformable superquadrics. IEEE Trans. Pat. Anal. Mach. Intell. 13 (1991)
+3. Cootes, T., Taylor, C., Cooper, D., Graham, J.: Active shape models - their training
+and application. Computer Vision and Image Understanding 61 (1995) 38–59
+4. Leventon, M., Grimson, E., Faugeras, O.: Statistical shape inﬂuence in geodesic
+active contours. Comp. Vision and Patt. Recon. (CVPR) (2000)
+5. Davatzikos, C., Tao, X., Shen, D.: Hierarchical active shape models, using the
+wavelet transform. IEEE Trans. Medical Imaging 22 (2003) 414–423
+
+Multiscale 3D Shape Analysis Using Spherical Wavelets
+
+467
+
+6. Schr¨der, P., Sweldens, W.: Spherical wavelets: Eﬃciently representing functions
+o
+on the sphere. Computer Graphics Proceedings (SIGGRAPH 95) (1995) 161–172
+7. Greenshields, I.: 3d shape approximants via spherical wavelet decompositions. 14th
+Symposium on Computer-Based Medical Systems (2001) 31
+8. Haker, S., Warﬁeld, S., Tempany, C.: Landmark-guided surface matching and
+volumetric warping for improved prostate biopsy targeting. MICCAI (2004)
+9. Mallat, S.: Wavelet Tour of Signal Processing. Academic Press (1999)
+10. Schr¨der, P., Sweldens, W.: Spherical wavelets: Texture processing. In Hanrahan,
+o
+P., Purgathofer, W., eds.: Rendering Techniques ’95. Springer Verlag (1995)
+11. Shi, J., Malik, J.: Normalized cuts and image segmentation. IEEE Transactions
+on Pattern Analysis and Machine Intelligence 22 (2000) 888–905
+12. Papoulis, A.: Probability, Random Variables, and Stochastic Processes. McGrawHill (1991)
+13. Styner, M., Lieberman, J.A., Pantazis, D., Gerig, G.: Boundary and medial shape
+analysis of the hippocampus in schizophrenia. Medical Image Analysis 8 (2004)
+14. Mohamed, A., Davatzikos, C.: Shape representation via best orthogonal basis
+selection. MICCAI 1 (2004) 225–233
+
+

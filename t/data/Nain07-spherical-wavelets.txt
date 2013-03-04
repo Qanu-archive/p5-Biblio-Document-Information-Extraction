@@ -1,0 +1,1851 @@
+598
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+Multiscale 3-D Shape Representation and
+Segmentation Using Spherical Wavelets
+Delphine Nain, Steven Haker, Aaron Bobick, and Allen Tannenbaum*
+Abstract—This paper presents a novel multiscale shape representation and segmentation algorithm based on the spherical
+wavelet transform. This work is motivated by the need to compactly and accurately encode variations at multiple scales in the
+shape representation in order to drive the segmentation and shape
+analysis of deep brain structures, such as the caudate nucleus
+or the hippocampus. Our proposed shape representation can be
+optimized to compactly encode shape variations in a population at
+the needed scale and spatial locations, enabling the construction of
+more descriptive, nonglobal, nonuniform shape probability priors
+to be included in the segmentation and shape analysis framework.
+In particular, this representation addresses the shortcomings of
+techniques that learn a global shape prior at a single scale of
+analysis and cannot represent ﬁne, local variations in a population
+of shapes in the presence of a limited dataset.
+Speciﬁcally, our technique deﬁnes a multiscale parametric
+model of surfaces belonging to the same population using a
+compact set of spherical wavelets targeted to that population. We
+further reﬁne the shape representation by separating into groups
+wavelet coefﬁcients that describe independent global and/or local
+biological variations in the population, using spectral graph partitioning. We then learn a prior probability distribution induced
+over each group to explicitly encode these variations at different
+scales and spatial locations. Based on this representation, we
+derive a parametric active surface evolution using the multiscale
+prior coefﬁcients as parameters for our optimization procedure
+to naturally include the prior for segmentation. Additionally, the
+optimization method can be applied in a coarse-to-ﬁne manner.
+We apply our algorithm to two different brain structures, the
+caudate nucleus and the hippocampus, of interest in the study
+of schizophrenia. We show: 1) a reconstruction task of a test set
+to validate the expressiveness of our multiscale prior and 2) a
+segmentation task. In the reconstruction task, our results show
+that for a given training set size, our algorithm signiﬁcantly
+improves the approximation of shapes in a testing set over the
+Point Distribution Model, which tends to oversmooth data. In the
+segmentation task, our validation shows our algorithm is computationally efﬁcient and outperforms the Active Shape Model
+algorithm, by capturing ﬁner shape details.
+Manuscript received November 20, 2006; revised January 19, 2007. This
+work was supported in part by the National Alliance for Medical Image
+Computing (NAMIC), funded by the National Institutes of Health (NIH)
+through the NIH Roadmap for Medical Research under Grant U54 EB005149.
+The work of A. Tannenbaum and D. Nain was also supported by the NIH
+under Grant NAC P41 RR-13218 as well as a Marie Curie Grant from the
+EU through the Technion. The work of S. Haker was supported by the NIH
+under Grants R01CA109246, U41RR019703, P41RR013218, R01CA104976,
+R01CA111288, P01CA067165, and R01LM007861. Asterisk indicates corresponding author.
+D. Nain and A. Bobick are with College of Computing, Georgia Institute of
+Technology, Atlanta, GA 30332 USA (e-mail: delﬁn@alum.mit.edu).
+S. Haker is with the Department of Radiology, Surgical Planning Laboratory,
+Brigham and Women’s Hospital, Boston, MA 02115 USA.
+*A. Tannenbaum is with the Electrical and Computer Engineering Department, Georgia Institute of Technology, Atlanta, GA 30332 USA and also with
+the Biomedical Engineering Department, Georgia Institute of Technology, Atlanta, GA 30332 USA (e-mail: tannenba@ece.gatech.edu).
+Color versions of one or more of the ﬁgures in this paper are available online
+at http://ieeexplore.ieee.org.
+Digital Object Identiﬁer 10.1109/TMI.2007.893284
+
+Index Terms—Brain structures, schizophrenia, segmentation,
+shape representation, wavelets.
+
+I. INTRODUCTION
+HE characterization of local variations speciﬁc to a shape
+population is an important problem in medical imaging
+since a given disease often only affects a portion of the surface
+of an organ. In particular, one of the driving biological projects
+that motivates our work is the study of schizophrenia, a multifaceted illness affecting 1% of the U.S. population and consuming a signiﬁcant portion of the health-care budget (estimates
+of yearly costs are 60 billion dollars) [1]. Yet the image-based
+clinical study of schizophrenia is only now beginning to take
+concrete form, primarily because neuroimaging techniques are
+ﬁnally providing a sufﬁciently detailed picture of the structure
+of the living brain and tracking the way the brain functions in
+controlled experimental settings. One important aspect of such
+an analysis of schizophrenia is the segmentation and shape analysis of selected brain structures, such as the hippocampus or the
+caudate nucleus, in order to ﬁnd differences between groups of
+healthy and diseased patients.
+Currently, such segmentations are typically carried out by
+hand. An automatic tool would be a great advance if it were
+to reliably and reproducibly segment cortical structures for
+multiple patients, across multiple time points. After the shapes
+are segmented the geometrical differences between brain structures of patients with schizophrenia and patients without can be
+studied. Many shape features have been proposed, some global,
+such as volume [2] or the shape index [3], some local such as
+point-to-point differences [4], and some at intermediate scales,
+such as the medial representation [5].
+Fig. 1 shows a rendering of left caudate nucleus along with an
+MRI slice in the coronal and sagittal view, as well as three typical surfaces from our dataset. The caudate nucleus is located in
+the basil ganglia, a group of nuclei in the brain associated with
+motor and learning functions [6]. Fig. 2 shows the same information for the left hippocampus. The hippocampus is a part of
+the brain located inside the temporal lobe. It forms a part of the
+limbic system and plays a part in memory and navigation [7].
+As can be seen in Figs. 1 and 2, those structures contain sharp
+features that could be important in shape analysis [8]. An automated segmentation of such structures must therefore be highly
+accurate and include relevant high frequency variations in the
+surface. Since shape representation is a key component of the
+segmentation, it must be descriptive enough to express shape
+variations at various frequency levels, from low harmonics to
+sharp edges. Additionally, a shape representation that encodes
+variations at multiple scales can be useful in itself as a rich feature set for shape analysis and classiﬁcation.
+
+T
+
+0278-0062/$25.00 © 2007 IEEE
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+Fig. 1. (a), (b) Coronal and Sagittal view of left caudate nucleus. (c)–(e) Example of three shapes from left caudate nucleus dataset.
+
+599
+
+coefﬁcients can be used both as global and local shape descriptors, unlike Fourier basis functions or principal components over
+landmarks which are global shape descriptors. The use of spherical wavelet basis in medical imaging has been investigated for
+segmentation in 2-D imagery [14] but not yet for surfaces in 3-D
+imagery. This work addresses this gap and presents three novel
+contributions for shape representation, multiscale prior probability estimation, and segmentation. Finally, we should note that
+preliminary versions of the approach described in the present
+paper have appeared in the conference proceedings in [15] and
+[16].
+The remaining sections of this paper may be summarized as
+follows. We ﬁrst review related work in Section II. We then describe our shape representation based on the spherical wavelet
+transform in Section III. In Section IV, we detail the construction of a scale-space prior over the wavelet coefﬁcients for a
+population of shapes and evaluate this prior in a reconstruction
+task. In Section V, we derive a parametric active contour segmentation ﬂow based on the spherical wavelet representation
+and scale-space prior and evaluate this algorithm in a segmentation task. We conclude in Section VI with a discussion and
+future work.
+II. PREVIOUS WORK
+A. Shape Representation
+
+Fig. 2. (a), (b) Coronal and Sagittal view of left hippocampus. (c)–(e) Example
+of three shapes from left hippocampus dataset.
+
+As will be reviewed in Section II, medical object segmentation with deformable models and statistical shape modeling
+are often combined to obtain a more robust and accurate segmentation [9]–[13]. In that framework, a joint prior probability
+over shape parameters is learned using a training set in order to
+constrain the parameter values during the segmentation process.
+However, the degrees of freedom that can be expressed with the
+shape parameters and the number of training samples greatly
+inﬂuence how accurately the the prior probability can be estimated.
+To address this issue, a decomposable shape representation
+targeted to the population seems natural, where the shape parameters are separated into groups that describe independent
+global and/or local biological variations in the population, and
+a prior induced over each group explicitly encodes these variations. Wavelet basis functions are useful for such a representation since they range from functions with global support to
+functions localized both in frequency and space, so that their
+
+In this paper, we focus on 3-D brain structures that have
+boundaries that are simply connected surfaces (topological
+spheres). To conduct segmentation or shape analysis on such
+structures, it is useful to have a mathematical description of the
+boundary of the given structure. Two main approaches exist:
+to represent the boundary explicitly in a parametric form or
+implicitly as the level set of a scalar function. For the paradiscrete
+metric form, the simplest representation is a set of
+3-D points connected by a triangular mesh (piecewise linear
+surface). The full surface can be compactly encoded using
+point coordinates and a connectivity list [17].
+Other parametric representations use linear combinations of
+basis functions deﬁned at the vertices of the mesh. In the work
+of Staib et al. [18], a Fourier parameterization decomposes the
+surface into a weighted sum of sinusoidal basis functions. One
+complexity of the technique is the choice of surface parameterization. More recent work has avoided the parameterization
+problem by ﬁrst mapping the surface to the sphere and decomposing the shape signal using basis functions deﬁned directly
+on the sphere. In the work of Brechbuhler et al. [19], a continuous, one-to-one mapping from the surface of an original
+object to the sphere is deﬁned using an area-preserving mapping that minimizes distortions. The object surface can then
+be expanded into a complete set of spherical harmonics basis
+functions (SPHARM). Similar to the Fourier surface approach,
+the advantage of this representation is that the coefﬁcients of
+the spherical harmonic functions of different degrees provide
+a measure of the spatial frequency constituents that comprise
+the structure. Partial sums of the series can be used to compactly represent selected frequencies of the object. As higher
+frequency components are included, more detailed features of
+the object appear. However, due to the global support of the
+
+600
+
+spherical harmonic functions, the coefﬁcients cannot be used
+to identify where on the surface the frequency content appears.
+Spherical wavelet functions address this shortcoming since they
+have local support at various scales. In [20] and [21], the authors
+showed that a spherical wavelet basis can capture shape changes
+with fewer coefﬁcients than a spherical harmonic basis and can
+be used successfully for cortical surface shape analysis. In [22],
+spherical wavelets are used to analyze a manifold not topologically equivalent to a sphere by doing a nonbijective mapping
+between the manifold and the sphere via the normals. In [23],
+the authors also use a multiresolution approach to shape characterization but do not use spherical wavelets.
+With the implicit representation, surfaces are the zero level
+set of a scalar function in . The scalar function used is often
+a signed distance map. Implicit representations are less compact than the parametric representation but can represent any
+topology. This can be an advantage during the segmentation
+process since the implicit shape representation can naturally
+handle topological changes. However, in this paper we will be
+focusing on structures with the same topology and will therefore be using a parametric representation that is more compact
+and therefore more efﬁcient during a surface evolution. We will
+discuss in Section VI the extension of our multiscale shape prior
+and segmentation algorithm to implicit shape representations.
+B. Segmentation With Active Contours
+By representing the shape of the segmented structure boundaries with a model and deforming the model to ﬁt the data,
+deformable models offer robustness to both image noise and
+boundary gaps [9] and have been extensively studied and widely
+used in medical image segmentation, with good results. There
+are two types of deformable models, based on which representation is used for the model: parametric deformable models and
+geometric deformable models.
+The classical parametric model is based on the snake formulation. See [9] and [24] for a detailed survey of snakes, their extensions, and their use in medical image analysis. Geometric deformable models [25]–[28] evolve a curve or surface using only
+geometric measures. Since the evolution is independent of the
+parameterization, the evolving curves and surfaces can be represented implicitly as a level set of a scalar function [29], [30].
+As a result, topology changes can be handled automatically at
+the expense of a higher computational cost since the implicit
+shape representation is of higher dimension than the parametric
+representation. In this paper, since we will be segmenting brain
+structures of a ﬁxed topology, our initial and ﬁnal contour will
+remain of the same topology and we will therefore use the parametric model given its computational efﬁciency. One point of
+departure with the snakes model is that we will be deriving an
+evolution equation using the shape parameters directly as opposed to landmarks on the shape, in similar spirit to Tsai et al.
+[12].
+Initial formulations of active contours, called “edge-based
+active contours,” combined smoothness constraints with image
+data forces sampled on the boundary of the model. One issue
+with edge-based active contours is that they are not robust to
+noise in the image and the gradient terms can stop the curve
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+evolution at spurious edges. Recently, there has been a considerable amount of work on image segmentation using region-based
+curve evolution techniques. In those techniques, the force that
+inﬂuences the evolution of the curve depend on region statistics,
+inspired by the region competition work of Zhu and Yuille [31]
+and more recently the work of Chan and Vese [32] and Yezzi
+[33]. Our work uses the region-based active contour formulation in a parametric framework.
+C. Shape Priors
+Shape priors are commonly used to constrain shapes obtained
+during the segmentation and registration of biomedical images.
+Some of the ﬁrst shape priors were based on local smoothness
+constraints [34] via elastic forces or combinations of global and
+local constraints [35] within the active contour framework. One
+limitation of these models is possible convergence to suboptimal
+shapes due to high ﬂexibility in deformations. Statistical shape
+models were devised to overcome such drawbacks by learning
+a shape model from a training set.
+In the Point Distribution Model (PDM) of Cootes and Taylor
+[17], a probability prior is learned from a training set of shapes
+by estimating a joint probability distribution over a set of landmarks on the shapes using principal component analysis (PCA).
+The joint probability distribution is assumed to be a multivariate
+Gaussian distribution. A covariance matrix is built from the data,
+and a diagonalization of the covariance matrix provides eigenvectors that are the principal axes of the distribution (also called
+principal modes) and the eigenvalues provide a bound on the
+subspace occupied by the shapes seen in the training set. This
+prior is then used in a parametric active contour segmentation
+algorithm called Active Shape Models (ASM) by projecting the
+evolving shape onto the space of eigenvectors and limiting the
+evolving shape to lie within a certain number of standard deviations of the eigenvalues seen in the training set. Shape priors
+in geometric active contours were introduced by Leventon et al.
+[11], where the landmarks are the pixels of the distance map implicitly representing the shape.
+In ASM, the advantage of using the covariance matrix from
+landmarks in a training set is to restrict the segmentation
+task to a subspace of allowable shapes. However, it has two
+major limitations. First, it often restricts deformable shape too
+much, particularly if it has been trained on a relatively small
+number of samples since the number of principal components
+extracted from diagonalizing the covariance matrix is bound
+by the number of training shapes. Indeed, since the rank of the
+, if there are
+training
+covariance matrix is at most
+shapes used to create the covariance matrix, then at most
+eigenvectors (or principal modes) exist. Second, eigenvectors
+of the covariance matrix encode the most global modes of
+variation in the shapes, hence ﬁner, more local variations of
+shapes are often not encoded given a limited training set.
+To address this issue, the authors in Davatzikos et al. [14]
+have proposed a hierarchical active shape model framework for
+contours in 2-D medical imagery using standard 1-D wavelets,
+with convincing results. They use the wavelet transform [36] to
+produce a scale space decomposition of the signal. The authors
+apply a wavelet transform to the parametric functions
+representing a deformable contour. The authors approximate the
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+full covariance matrix of the wavelet coefﬁcients as a a matrix that is block diagonal, when rearranging the coefﬁcients in
+the right order. Coefﬁcients that belong to the same band make
+up a diagonal block of the covariance matrix. Coefﬁcients are
+grouped into bands using a logarithm tree to divide the spacefrequency domain. This groups coefﬁcients of the same scale
+and nearby spatial location in the same band, following the
+assumption that only coefﬁcients close in space and scale are
+closely correlated. Each diagonal block can then be statistically
+modeled independently of the rest of the matrix and eigenvectors are extracted for each diagonal block, bringing the total
+if there
+number of eigenvectors to (approximately)
+blocks and
+training shapes. The eigenvectors correare
+sponding to bands at coarse scales reﬂects global shape characteristics, whereas the eigenvectors corresponding to bands at
+ﬁner scales reﬂect local shape characteristics at a particular segment of the curve. Using this technique, the authors show that
+a segmentation using the wavelet shape prior is more accurate
+than a segmentation with traditional active shape models.
+
+601
+
+Fig. 3. Visualization of recursive partitioning of icosahedron mesh and basis
+functions built on ﬁnest resolution mesh. (a) Initial icosahedron (scale 0). (b)
+Two recursive partitionings of icosahedron (scale 2). (c) Four recursive partitionings of icosahedron (scale 4). (d) Visualization of scaling function of scale
+level j = 0. (e) Visualization of wavelet basis function of scale level j = 0. (f)
+Visualization of wavelet function of scale level j = 2. For (d)–(f), color corresponds to value of function on the sphere.
+
+D. Our Contributions
+We propose to extend the framework by Davatzikos et al. to
+3-D imagery in three novel ways. First, we describe a multiscale representation of surfaces in 3-D medical imagery using
+conformal mappings and a compact set of spherical wavelets
+targeted to the population we are analyzing. Second, we present
+a novel algorithm to discover optimal independent multiscale
+shape variations (bands) from the data by doing a spectral partitioning of coefﬁcients based on correlation, instead of arbitrarily
+grouping coefﬁcients close in space and scale together. Lastly,
+we derive an active contour segmentation algorithm in the space
+of the spherical wavelet basis functions in order to directly and
+naturally include the multiscale prior into the surface evolution
+framework.
+In [15], we presented an application of spherical wavelets to
+the statistical analysis of a population of 3-D surfaces in medical imaging, by applying PCA analysis to a scale-space decomposition of the spherical wavelet coefﬁcients representing
+the shapes. Our results showed that this type of multiscale prior
+outperformed PDM in a reconstruction task. In this paper, we
+present this technique and further compare it to another waveletbased prior. We then present a novel segmentation framework
+using this 3-D wavelet representation and multiscale prior.
+
+B. Spherical Wavelets
+A spherical wavelet basis is composed of functions deﬁned
+on the sphere that are localized in space and characteristic scales
+and therefore match a wide range of signal characteristics, from
+high frequency edges to slowly varying harmonics [36]. The
+basis is constructed of scaling functions deﬁned at the coarsest
+scale and wavelet functions deﬁned at subsequent ﬁner scales.
+A scaling function is a function on the standard unit sphere
+denoted by
+where is the scale of the function
+and is a spatial index that indicates where on the surface the
+function is centered. A usual shape for the scaling function is a
+hat function deﬁned to be one at its center and to decay linearly
+. The
+to zero. Fig. 3(d) shows a scaling function for scale
+at
+color on the sphere indicates the value of the function
+every point on the sphere. As the scale increases, the support
+of the scaling function decreases. A wavelet function is denoted
+. At a particular scale , wavelet functions
+by
+scaling functions. Fig.
+are combinations of scale and
+3(e)–(f) shows wavelet functions for different values of and
+. Note that the support of the functions becomes smaller as the
+scale increases. Together, the coarsest level scaling function and
+all wavelet scaling functions construct a basis for the function
+space
+
+III. SHAPE REPRESENTATION
+A. Data Description
+Throughout this work, we employ two key brain structures
+to illustrate our techniques and our results. We use a dataset
+of 29 left caudate nucleus structures and a dataset of 25 left
+hippocampus structures, from a 1.5 Tesla GE Echospeed MR
+system, coronal SPGR images, 124 slices of 1.5 mm thickness,
+mm. The MRI scans
+voxel dimensions
+were hand-segmented by an expert neuroanatomist to provide
+ground truth segmentations for each structure. Each manual segmentation deﬁned a 3D surface for each structure extracted by
+a standard isosurface algorithm.
+
+(1)
+A given function
+can be expressed in the basis as
+a linear combination of basis functions and coefﬁcients
+(2)
+represent the low pass content of
+Scaling coefﬁcients
+the signal , localized where the associated scaling function has
+represent localized
+support; whereas, wavelet coefﬁcients
+
+602
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+band pass content of the signal, where the band pass frequency
+depends on the scale of the associated wavelet function and the
+localization depends on the support of the function.
+In this paper, we use the discrete biorthogonal spherical wavelets functions deﬁned on a 3-D mesh proposed by
+Schröder and Sweldens [37], [38]. These are second-generation
+wavelets adapted to manifolds with nonregular grids. The main
+difference with the classical wavelet is that the ﬁlter coefﬁcients
+of second generation wavelets are not the same throughout,
+but can change locally to reﬂect the changing (non translation
+invariant) nature of the surface and its measure. This means
+that wavelet functions deﬁned on a mesh are not scaled and
+shifted versions of the function on a coarser grid, although they
+are similar in shape, in order to account for the varying shape
+of mesh triangles. The second-generation spherical wavelets
+that we use are deﬁned on surfaces which are topologically
+and equipped with a multiresequivalent to the unit sphere
+olution mesh. A multiresolution mesh is created by recursively
+subdividing an initial polyhedral mesh so that each triangle is
+split into four “child” triangles at each new subdivision (scale)
+level. This is done by adding a new midpoint at each edge
+and connecting midpoints together. This process is shown in
+Fig. 3(a)–(c). The starting shape is an icosahedron with 12
+vertices and 20 faces, and at the fourth subdivision level, it contains 5120 faces and 2562 vertices. Any shape (not necessarily
+a sphere) that is equipped with such a multiresolution mesh
+can be used to create a spherical wavelet basis and perform the
+spherical transform of a signal deﬁned on that mesh.
+1) Discrete Spherical Wavelet Transform: The algorithm for
+the fast discrete spherical wavelet transform (FSWT) is given
+in [38]. Here, we sketch the transform algorithm in matrix form
+which gives a more compact and intuitive notation for the rest of
+this paper. In practice, we use the FSWT in our implementation.
+If there exist vertices on the mesh, a total of basis funcscaling functions (where
+tions are created, composed of
+is the initial number of vertices before the base mesh is subfor the icosahedron) and
+wavelet
+divided, with
+where
+is the number of new verfunctions for
+,
+,
+,
+tices added at subdivision (
+for the ﬁrst four subdivisions of the icosahedron).
+In this paper, we will refer to all basis functions as wavelet basis
+functions as a shorthand.
+In matrix form, the set of basis functions can be stacked as
+where each column is
+columns of a matrix of size
+vertices. The basis
+a basis function evaluated at each of the
+function is evaluated at each of the vertices. The basis functions are arranged by increasing scale (subscript ) and within
+each scale level by increasing spatial index (subscript ). Since
+the spherical wavelet functions are biorthogonal,
+(the identity matrix), so the inverse basis
+is used for per.
+fect reconstruction, since
+Any ﬁnite energy scalar function evaluated at vertices, de, can be transformed into a
+noted by the vector of size
+of size
+using the Forward
+vector of basis coefﬁcients
+Wavelet Transform:
+
+(3)
+
+and recovered using the Inverse Wavelet Transform:
+(4)
+The vector of coefﬁcient is composed of coefﬁcients associated with each basis function in . It contains scaling coefﬁentries, then wavelet coefﬁcients associated
+cients as its ﬁrst
+entries, and
+with wavelet functions of scale zero for the next
+for
+so forth, all the way to wavelet coefﬁcients of scale
+the last
+entries. Therefore, in total, the vector contains
+entries. Next, we describe how to represent shapes using spherical wavelets.
+C. Shape Representation With Spherical Wavelets
+In this section, we explain how to equip a set of anatomical
+shapes with the correct multiresolution mesh structure in order
+to build wavelet functions directly on a mean shape that is representative of the population. We then explain how to encode a
+shape signal into wavelet coefﬁcients.
+1) Shape Remeshing and Registration: Before we can perform our wavelet analysis, we need to retriangulate and register
+all the surfaces in the dataset, so that they have the same mutiresolution mesh and mesh nodes at corresponding anatomical
+locations. Our approach to surface registration is based on the
+theory of conformal (angle-preserving) mappings [39], [40] of
+surfaces with spherical topology. Regardless of the degree of
+surface variation, such as variations in convexity to concavity,
+the method efﬁciently unfolds each surface, yielding an analytic one-to-one (conformal) mapping of each surface onto the
+sphere, and between each pair of surfaces by composition of
+mappings. Although we have had success with our conformal
+mapping approach, we note that the wavelet analysis presented
+here does not require this particular method of spherical mapping. Indeed, other techniques such as inﬂation [41], harmonic
+mapping with rectangular grids [19], circle packing [42], least
+squares mapping [43], and conformal mapping with parabolic
+equations [44] could also be used. The steps of our registration
+and remeshing technique ar as follows.
+Step 1: Conformal Mapping: Let be a surface of spherical topology we wish to register and remesh. As noted above,
+our registration method is based on complex variables and the
+conformal mapping of Riemann surfaces. The core of the algorithm requires the solution of a pair of sparse linear systems of
+equations and uses ﬁnite element techniques to solve an elliptic
+partial differential equation of the form
+
+(5)
+where denotes the Laplace-Beltrami operator on , is an
+arbitrary point on , is the desired conformal mapping to the
+is the Dirac delta function at , and denotes a
+sphere ,
+complex conformal coordinate around . See [39] for details.
+The resulting mapping to the sphere can be made unique by
+specifying three points on to be mapped respectively to the
+north pole, south pole, and an equatorial point on the sphere.
+In Appendix A, we describe our technique for automatically
+choosing these three points. Choosing these points consistently
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+603
+
+Fig. 4. Illustration of remeshing step for two left hippocampus shapes. See Section III-C-1 for details.
+
+helps insure that corresponding surface locations are well registered within the caudate and hippocampus datasets. This is an
+approach that works well in practice with the caudate nucleus
+and the hippocampus. We hypothesize that this approach would
+work with other shapes that have a major axis, so other automatic point selection would have to be devised for more complex shapes.
+This ﬁrst step is illustrated in the ﬁrst two columns of Fig. 4,
+where each row of the ﬁrst column represents a different initial left hippocampus surface with three automatically chosen
+control points. The color represents the coordinate of for
+reference. The second column shows the result of mapping each
+point on to the sphere using the conformal mapping . The
+sphere then has the same triangulation as . The color shown
+at the vertices of is still the coordinate of the corresponding
+vertex on .
+Step 2: Area Correction: As pointed out in the early spherical mapping work of [19], conformal mappings may result in
+extreme distortion of area which needs to be corrected for certain applications. In particular, when remeshing a surface using
+a standard multiresolution mesh, large distortions in area can
+result in a nonuniform distribution of mesh nodes on the original surface and a loss of ﬁne detail. To prevent this, we have
+implemented a simple method to adjust the conformal mapping
+to have better area-preservation properties. This technique ensures that the cumulative area of the vertices on the sphere between the south pole and any latitudes, normalized by the overall
+sphere surface area, is equal to the cumulative area of the same
+triangles on the shape, normalized by the overall shape surface
+area. This ensures that the triangle areas for the sphere and the
+shape are spread out proportionally from south to north pole.
+
+To achieve this, we translate the points on the sphere along their
+longitudes. The mathematical details of the technique are as follows. Let
+for
+represent the mesh points on the sphere,
+. Then,
+indexed so that
+is the south pole (0, 0, 1) and
+is the north pole (0, 0, 1).
+For each , the area of the region of the sphere south of the
+latitude through
+is given analytically by
+. This
+region corresponds to a region on the original surface of area
+, which can be calculated using the triangulation of . In parand
+, where is the total area of . If
+ticular,
+for all , then these areas on and the
+sphere are spread out proportionally from south to north pole.
+This is unlikely to be the case in practice, so we adjust each
+to get a new point
+by setting
+point
+and setting
+.
+This effectively spreads out the areas on the sphere in proportion
+to their original surface areas. The advantage of this approach
+is that the algorithm involved does not require iteration, as a
+functional minimization or ﬂow technique would, and guarantees that the adjusted spherical mapping remains bijective. In
+the third column of Fig. 4, each row shows an adjusted spherical mapping. The color coding is again the coordinate of the
+original surface shown in the ﬁrst column. Comparison of the
+second and third columns to the ﬁrst clearly shows that the third
+has a better distribution of area than the second. We note that
+although this method has produced satisfactory results for the
+surfaces we analyze here, more irregular surfaces may require
+additional area adjustments.
+Step 3: Remeshing: We retriangulate with the vertices of a
+subdivided icosahedron shown in Fig. 3(c). This yields a sphere
+
+604
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+Fig. 6. Visualization of basis functions constructed on mean shape at various
+levels. (a) Scaling function at scale 0. (b) Wavelet function at scale 0. (c) Wavelet
+function at scale 2. For all subﬁgures, the color corresponds to the value of the
+functions.
+
+Fig. 5. After remeshing, shapes are aligned with Procrustes alignment and
+mean shape is computed. (a) Left hippocampus surfaces before alignment. (b)
+Left hippocampus surfaces after alignment. (c) Left hippocampus mean shape
+computed from aligned shapes. (d) Left caudate surfaces before alignment
+(b) and left caudate surfaces after alignment (c). Left caudate mean shape
+computed from aligned shapes.
+
+with a new triangulation denoted by . If we apply the inverse
+,
+, we then obmapping to the vertices of
+tain a retriangulated version of the original surface . After this
+has two nice proptransformation, the retriangulated shape
+erties: 1) it has the required mesh for spherical wavelet analysis and 2) it has a one-to-one mapping with a canonical spherical mesh, therefore providing one-to-one correspondence with
+other shapes that have this property. Note that this remeshing
+step maintains the initial correspondences. Before remeshing,
+all shapes have been mapped to the sphere and their spherical map is aligned on the sphere with the pole selection. The
+remeshing is done with the same mesh for all shapes, therefore
+the spherical map is still aligned after the remeshing step.
+Step 4: Registration: After remeshing, all shapes have the
+same mesh with
+vertices. A Procrustes transformation [45]
+can be applied to all shapes to register them in Euclidean space.
+This result of the Procrustes alignment is shown in Fig. 5(a)–(c)
+for the left hippocampus dataset and in Fig. 5(d)–(f) for the left
+caudate dataset. After Procrustes alignment, we denote shape
+by a vector
+of size
+(the ﬁrst entries are the coordinates of the vertices, the next entries are the coordinates,
+and the last entries are the coordinates). After all shapes
+is found with the following
+are registered, the Mean shape
+equation:
+(6)
+The mean shape for the left hippocampus dataset is shown in
+Fig. 5(c) and for the left caudate dataset in Fig. 5(f).
+2) Spherical Wavelets on Mean Shape: After the spherical
+mapping and registration, all shapes in the population are
+equipped with the same multiresolution mesh, where each
+vertex of the mesh corresponds to the same anatomical location
+across shapes. Since the spherical wavelet functions used in this
+work can be deﬁned on any surface of spherical topology with a
+multiresolution mesh, we can build the basis functions directly
+on the mesh of a mean shape for a population. This creates a set
+of basis functions adapted to the geometry of the mean shape,
+and therefore more speciﬁc to each shape in the population
+
+than if we had used bases functions built on a sphere. For each
+shape, we denote the matrix of basis functions built on the
+. A scaling function for scale 0 and a
+mean shape mesh as
+wavelet function for scales 2 and 4 are shown in Fig. 6(a)–(c)
+on the mean shape of the left hippocampus population.
+3) Encoding Shape Signal With Spherical Wavelets: We represent each shape in the population by encoding the deviation
+from the mean using the spherical wavelet transform. We ﬁrst
+encode the variation from the mean for the th shape with the
+signal of size
+(7)
+We then transform into a matrix of spherical wavelet basis
+with the forward spherical wavelet transform
+coefﬁcients
+
+(8)
+
+where
+is the wavelet basis functions evaluated on the mean
+shape for that population. Therefore, a shape is transformed into
+wavelet coefﬁcients by taking the forward wavelet transform of
+the , , and variation from the mean signal. The resulting
+contains as the ﬁrst
+entries the
+vector of coefﬁcients
+wavelet encoding of the coordinates of the shape, ranked from
+coarse scale to ﬁner scales, and similarly for the next entries
+that encode the coordinates, and the last entries that encode
+the coordinate.
+4) Filtering Shape Signal by Projection Onto a Reduced Set
+of Basis Functions: The representation presented so far allows
+us to represent the shape at various scale levels, by a ﬁltering
+operation that projects the shape onto a limited set of basis funcof size
+tions. This can be done by creating a ﬁlter matrix
+, where
+is the number of basis functions to keep.
+Each row of the matrix keeps a particular basis function of
+index by having entries of value zero, except for the th entry
+that is set to one. The ﬁltering (for all coefﬁcients) is then performed with the following equation:
+
+(9)
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+605
+
+to learn the probability distribution of the nontruncated coefﬁcients. This process is described in Section IV-B.
+A. Coefﬁcient Truncation via Power Analysis
+of the shape signal for a popuGiven the total power
+lation, we would like to remove the basis functions that do not
+contribute signiﬁcantly to that power. We deﬁne the population
+) by
+shape signal (size
+(11)
+
+Fig. 7. Example of ﬁltering operation for shape 1 of left caudate dataset and
+left hippocampus dataset. (a) Mean shape. (b), (e) Mean shape low frequency
+variations (scales 0–2). (c), (f) Mean shape low and medium frequencies variations (scales 0–3). (d), (h) Mean shape
+all frequencies variations (scales
+0–4).
+
++
++
+
++
+
+The resulting ﬁltered coefﬁcients
+are of size
+. To
+is ﬁrst premultiplied by the transdisplay the ﬁltered shape,
+(the coefﬁcients that correspond
+pose of to be of size
+to the eliminated basis functions are zero), the inverse wavelet
+transform is applied and the mean shape is added
+
+(10)
+One example of this projection process is shown in
+Fig. 7(a)–(d) for the left caudate shape 1 and (e)–(h) for
+the left hippocampus shape 1. Fig. 7(a) shows the mean shape
+for the left caudate population. Fig. 7(b)–(d) shows the mean
+caudate shape plus ﬁltered variations from the mean for shape
+1. If only coarse scale basis functions are used Fig. 7(b), the
+resulting shape is coarse with low frequency variations from the
+mean shape. If basis functions of ﬁner (higher) scale are added
+to the projection set, the resulting shape contains additional
+high frequency variations [Figs. 7(c), (d)]. The same information is shown for the hippocampus in Fig. 7(e)–(h). This type
+of ﬁltering (or truncation) operation where a whole scale level
+is suppressed is commonly used with Fourier functions, such
+as spherical harmonics. However, one advantage of spherical
+wavelets is that due to the local support of its basis functions,
+a more granular truncation can be done, where only certain
+basis functions at a scale level are suppressed, instead of all
+the functions for that level. This allows for a more compact
+truncation, keeping only those functions that represent important information in the signal, at all scale levels. The next
+section explains how we do this in a principled way for a whole
+population of shapes.
+IV. MULTISCALE SHAPE PRIOR
+To build a prior that captures both global and local variations in the population, we ﬁrst reduce the dimensionality of the
+coefﬁcients and keep only the coefﬁcients that encode relevant variations in the training data. This process is described
+in Section IV-A. After truncation, we present a novel algorithm
+
+where
+selects the variation from the mean of vertex of
+shape along the axis, and
+and
+along the and
+axis, respectively.
+Since the wavelet basis functions are not orthonormal, we
+cannot directly apply Parseval’s theorem for spectrum analysis.
+Indeed
+(12)
+where
+are the coefﬁcients of the spherical wavelet
+transform of .
+In order to still perform a power analysis, we wish to see the
+contribution of each wavelet basis function to the total power
+. We know that for a signal sampled at
+for the population
+vertices of the mean shape
+
+(13)
+since
+
+. Then
+(14)
+
+The contribution of the th wavelet basis function to the sum in
+(14) is therefore
+(15)
+where
+
+is the th column of the basis matrix
+and
+is the th element of the coefﬁcients vector .
+Since we wish to remove basis functions that have no effect on
+, we remove those whose contribution
+is close to zero.
+can be both positive and negative, we rank the
+Noting that
+contribution of each basis by their absolute value from highest to
+lowest and truncate the lowest basis functions whose cumulative
+contribution is lower than 0.01% of the total power. Based on
+that indicates which
+this analysis, we build a ﬁlter matrix
+basis functions to keep to represent that population of shapes.
+This truncation step leads to a nice compression property
+since the reduced set of basis functions match variations speciﬁc
+to a shape population, without introducing large error between
+the ﬁltered shape and the nonﬁltered shape. Table I shows the
+number of truncated basis functions and the average mean and
+maximum error between original shapes and their ﬁltered verspeciﬁc to the shape population, for
+sion, using a ﬁlter matrix
+both the hippocampus and caudate dataset. The error is shown
+
+606
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+TABLE I
+
+Fig. 9. Shape representation from Sections III–IV-B.
+Fig. 8. Result of ﬁltering operation to create a reduced basis set. (a) Original
+caudate, shape 1. (b) Filtered caudate shape (54% truncation) with mean squared
+error from original shape as colormap. (c) Original hippocampus, shape 1. (d)
+Filtered hippocampus shape (35% truncation) with mean squared error from
+original shape as colormap.
+
+in millimeters. We show the amount of truncation and error for
+varying population size from 5 to 20. For the caudate dataset, between 958 and 1383 basis functions out of 2562 are truncated,
+. This repdepending on the number of shapes used to ﬁnd
+resents a compression level between 45% and 54%. With the
+truncation, the ﬁltered shapes differ on average less than 0.2
+mm from their unﬁltered version. Fig. 8(a) shows the original
+caudate shape 1 and Fig. 8(b) shows the ﬁltered shape (based
+on a 54% truncation level). The colormap shows the distance
+between the ﬁltered and nonﬁltered shapes. As can be seen in
+the ﬁgure, the truncation ﬁltering does not seem to effect the
+shape signiﬁcantly and all high scale variations are still present.
+For the hippocampus dataset, between 780 and 888 basis functions are truncated, representing a compression level between
+30% and 35%. Again, ﬁltered shapes differ less than 0.2 mm on
+average from their unﬁltered version. Fig. 8(c) shows the original hippocampus shape 1 and Fig. 8(d) shows the ﬁltered shape
+(based on a 35% truncation level). Again, the truncation ﬁltering
+does not affect the shape signiﬁcantly and all the ﬁner scales
+variation are still present.
+Fig. 9 summarizes the steps from Sections III–IV-A to transform a shape into its reduced wavelet representation. Next, we
+detail the steps to learn the multivariate probability distribution
+of the reduced wavelet coefﬁcients for a shape population.
+
+B. Multiscale Spherical Wavelet Prior
+After ﬁnding a reduced set of basis functions for a population
+of shapes, we wish to estimate the multivariate probability disof the wavelet coefﬁcients for that population.
+tribution
+Each shape of that population is then a random realization from
+.
+1) Motivation: To model the variation in the data, we take
+advantage of the natural multiresolution decomposition of the
+wavelet transform and learn variations in the population at every
+scale level. This means that small scale variations in the data will
+not be overpowered by large scale variations, which would be
+the case if we were to apply PCA directly to all the vertices or to
+all the wavelet coefﬁcients since PCA is a least squares ﬁt that
+major (large scale) variations in a dataset
+ﬁnds the ﬁrst
+shapes. By ﬁnding variations at separate scales, we ﬁnd
+of
+variations for each scale of analysis.
+We computed the covariance matrix of wavelet basis coefﬁcients for each scale and observed that the matrices were sparse.
+As a comparison, the covariance matrix of the coordinates of
+the vertices (used in PDM) is dense. For a given scale, we can
+reﬁne our model by taking advantage of this decorrelation property and cluster correlated basis coefﬁcients together, with the
+constraint that coefﬁcients across clusters have minimum correlation. Coefﬁcients in the same cluster then represent areas
+of the shape that have correlated variations in the population,
+for a given scale. Coefﬁcients that do not belong to the same
+cluster do not tend to be correlated in the population. Since the
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+607
+
+Fig. 10. Illustration of band creation algorithm.
+
+wavelet coefﬁcients across clusters are uncorrelated, they are
+also independent under the Gaussian assumption (inherent when
+we apply PCA analysis). Therefore, the overall joint probability
+can be modeled as the
+function of the wavelet coefﬁcients
+product of the joint probability functions of smaller uncorrelated
+clusters of coefﬁcients. Practically, this means that we can apply
+PCA to each cluster of coefﬁcients and we obtain modes of
+variations for each cluster at a given scale. This decomposition
+increases the number of variation modes (degrees of freedom)
+in the shape representation, but hopefully still captures existing
+correlation in the data by clustering together the coefﬁcients that
+are correlated and learning their modes of variation.
+We note that this hierarchical decomposition is inspired by the
+previous work of Davatzikos et al. [14] who used 1-D wavelet
+basis functions to analyze shape contours in 2-D imagery and
+performed a scale-space decomposition of the wavelet coefﬁcients. However, their work assumes that coefﬁcients associated
+with wavelet functions of the same scale that are also close in
+space are correlated to each other. In this paper, we relax the assumption that only spatial proximity would dictate correlation
+and ﬁnd clusters directly based on the correlation that exists in
+the data.
+In the next section, we show how to discover the clusters from
+the data. In Section IV-B-4, we show how to learn variations
+over every cluster and how to combine them into a multiscale
+prior.
+2) Coefﬁcient Clustering via Spectral Graph Partitioning:
+Fig. 10 shows a simple example used throughout this section
+to illustrate our clustering algorithm.
+To cluster correlated wavelet coefﬁcients, we use a spectral
+graph partitioning technique [46]. We use a fully connected
+where each node indexed by
+undirected graph
+
+is a random variable that represents the coefﬁcients associated with the th wavelet basis function of scale . Each
+wavelet basis function has three associated coefﬁcients per
+shape that represent the , , and variation, and those coefﬁcicents are
+,
+, and
+. For each shape ,
+we combine those three coefﬁcient values associated with basis
+function into one variable
+. Then, the random variable at node is represented by
+its
+realizations ( is the number of training shapes)
+.
+The weight on the edge that connects node and is a func.
+tion of similarity between those nodes and is denoted
+To deﬁne
+, we ﬁrst ﬁnd the sample correlation and
+-value between the random variables
+and
+
+(16)
+where
+is the sample mean of ,
+is the sample standard
+deviations of , and is the total number of samples (number
+of shapes in the population).
+With the correlation we compute an associated -value that is
+the probability of getting a correlation as large as the observed
+value by random chance, when the true correlation is zero. If
+is small, then the correlation
+is signiﬁcant. We pick
+a signiﬁcance threshold of 0.05.
+We then deﬁne the weight on the edge that connect nodes
+and to be
+if
+otherwise.
+
+(17)
+
+608
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+This similarity between the nodes can be represented as a
+. In Fig. 10,
+matrix where each entry , is the value
+for the hippocampus population for
+the similarity matrix
+all nodes of scale 0 is shown at the top left. The lighter the
+, the more similarity between coefﬁcients of basis
+entry
+and .
+Using the normalized cuts technique [46], we ﬁnd the optimal
+into two disjoint sets
+and
+partitioning of the nodes of
+such that nodes within a partition have the highest similarity and
+nodes across partitions have the lowest similarity. For example,
+in Fig. 10, nodes 2, 3, 5, 6, 7, 8, 9, 10, and 11 are put in the suband nodes 1, 4, and 12 are put in the subgraph . We
+graph
+show the new similarity matrix where the node indices are reand the
+ordered such that the ﬁrst contiguous nodes belong to
+next contiguous nodes belong to . This effectively transforms
+the similarity matrix into a block diagonal matrix, where entries
+outside of the diagonal blocks have minimum correlation.
+For each subgraph, we recursively iterate the normalized cuts
+until we reach a stopping criterion. The stopping criterion is
+based on the quality of the decomposition of each graph, validating whether the total correlation between the coefﬁcients
+separated in two subgraphs and is less than a percentage
+of the total correlation between coefﬁcients in the combined set
+. So, if is partitioned into sets and , we ensure that
+(18)
+In practice, we use
+. For example, in Fig. 10, subgraph
+is further subdivided into subgraphs
+and
+.
+After the recursion, each subgraph represents a set of wavelet
+basis functions whose coefﬁcients are correlated at that scale.
+We group these wavelet basis functions into a band, encoded by
+where is the scale level of the band and is
+an index set
+the band index. For example in Fig. 10, a total of three bands
+corresponding to the
+were discovered for scale 0: Band
+, Band
+corresponding to the nodes
+nodes in subgraph
+, and Band
+corresponding to the nodes in
+in subgraph
+subgraph
+.
+3) Visualizing Clustering Results: The visualization of resulting bands on the mean shape can in itself be interesting
+for shape analysis by indicating which surface patches co-vary
+across the training set.
+, we visualize the cumulative supTo visualize the band
+on the surface of the mean
+port of all wavelet basis in band
+shape. This can be done by using as a colormap the sum of the
+(the basis function matrix) indexed by
+. The
+columns of
+higher (lighter) values of the colormap then indicate where the
+wavelet basis functions in the band have support. This is shown
+in Fig. 10 at the bottom right for all three bands of scale 0.
+indicates correlated variation at the anterior/lateral
+Band
+side of the hippocampus (the wider portion of the shape) for
+indicates correlated variation at the
+that population. Band
+indiposterior/lateral side (the thinner portion) and Band
+cates variation on the medial side (the portion that appears at the
+bottom in the ﬁgure).
+Fig. 11 shows the result of the recursive clustering for the ﬁrst
+scale level for the left hippocampus data in the ﬁrst two columns.
+
+We used 20 training shapes to create the graph. Each row corresponds to a scale level. The ﬁrst column shows the initial similarity matrix for each level. The second column shows the resulting partitioned similarity matrix. As expected, the off-diagonal interband covariance is minimal. There are various band
+sizes, due to the fact that new bands are only recursively divided
+if condition (18) is met. The last three columns show the location of a selected band and the variation found within that band,
+as will be explained next.
+4) Building Prior: The ﬁnal step for building the prior consists of ﬁnding variations within each band of wavelet coefﬁcients. We call this approach the wavelet distribution model
+(WDM).
+, we create a ﬁlter matrix
+that
+Given a band index set
+. We then
+selects the wavelet basis functions in the band
+select the wavelet coefﬁcients corresponding to band
+for
+shape using the following:
+
+(19)
+
+is
+, where
+is the number of
+The size of
+.
+basis functions in
+We learn the major modes of variations in a band just like in
+PDM, by calculating the mean
+
+(20)
+forming a shape matrix
+(21)
+and covariance matrix
+(22)
+and then diagonalizing the covariance matrix to ﬁnd the eigen. Each column of
+vectors (major modes of variation)
+is an eigenvector of size
+that represents an axis of
+. In total for that band, we ﬁnd
+variation for the coefﬁcients
+or
+eigenvectors, whichever number is smaller.
+To create the shape prior, we transform the eigenvectors back
+into the right dimensions
+(23)
+are at the indices corso that the only nonzero entries of
+.
+responding to band
+We can visualize the effect of the th eigenvector for band
+and scale ,
+, by varying the shape wavelet coefﬁcients
+along that eigenvector by an amount
+(24)
+and then recovering the shape with (10).
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+609
+
+Fig. 11. Coefﬁcient clustering and selected band variation visualization for hippocampus data.
+
+This process is shown for the hippocampus dataset in Fig. 11
+for a selected band for four different scale levels. The eigenvectors of lower scale bands represent relatively global aspects of
+shape variability, whereas bands at ﬁner (higher) scales represent higher frequency and more localized aspects of shape variability. Hence, our technique discovers shape variations at every
+scale, where the variations are all the eigenvectors of all the
+bands and does not favor the discovery of global variations over
+local variations. Additionally, our prior accurately encodes ﬁner
+details even with small training sets, since if there are a total of
+bands, there exist on the order of
+eigenveceigenvectors when using PDM.
+tors, as opposed to just
+The full prior contains all the eigenvectors for all bands and
+of size
+if there are eigenall scales in a matrix
+vectors in total.
+A shape can then be represented with the full prior
+(25)
+where
+(size
+) represents the coordinates of the wavelet
+coefﬁcients of that shape in the eigenvector space.
+is now represented with the
+To summarize, each shape
+following equation:
+(26)
+C. Evaluation of Multiscale Shape Prior
+In this section, we evaluate the multiscale shape prior based
+on WDM and band decomposition for a shape reconstruction
+
+task. The basic idea is to learn a prior with a training set and
+to project shapes from a test set onto the prior to evaluate how
+close a projected test shape is to its ground truth.
+We have three goals for the evaluation.
+1) Compare the WDM prior using scale-band decomposition
+to WDM using only scale decomposition.
+2) Compare both WDM priors to PDM.
+3) Test the effect of noise on all priors.
+We partition our data with shapes randomly into training
+testing samples, where
+samples and
+and learn a shape prior from the training set. The prior for PDM
+consists of the mean shape and the eigenvectors of the landmarks on the shape. The prior for WDM using scale only consists of the mean shape, the mean wavelet coefﬁcient vector,
+the eigenvectors for coefﬁcients from each shape. The prior for
+WDM using scale and bands consists of the mean shape, the
+mean coefﬁcient vector, the band indices, and the eigenvectors
+for coefﬁcients from each band.
+Once we learn the priors from a training set, we project each
+shape in the testing set onto the eigenvectors of the prior and
+translate the coordinates of the projected test shape to a point
+lying at a reasonable distance of the training data ( 3 observed
+standard deviation). We then reconstruct the modiﬁed test shape.
+A mean squared error between the vertices of the ground truth
+and the reconstructed shape is calculated for all shapes in the
+testing set.
+To test the robustness of each prior, we also test the reconstruction in the presence of noise. To add noise to the test shape,
+we displace each vertex according to a Gaussian distribution
+with mean zero and a standard deviation that is 5% of the
+bounding box of the object, as shown in Fig. 14 (columns 2 and
+4), producing a shape with noise . Ideally, we would want the
+
+610
+
+Fig. 12. Hippocampus dataset. (a) Max squared reconstruction error (averaged
+over testing shapes) for various training set sizes. (b) Max squared reconstruction error with noise projection for various training set sizes.
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+WDM outperforms PDM due to the fact that more degrees
+of freedom are better for the reconstruction task, asimple shape
+representation with as many degrees of freedom as the vertices
+would reconstruct any test shape perfectly (as long as there are
+enough vertices to represent the shape). The real test is during
+the segmentation task where too many degrees of freedom might
+yield incorrect segmentations in the presence of noise or corrupt
+image data, when an evolving shape leaks into areas of the MRI
+image that are not part of the shape. This justiﬁes imposing a
+shape prior that limits the number of degrees of freedom, but
+can hopefully still capture the shape in the test data. We hypothesize that more degrees of freedom in the shape prior are better,
+as long as they still constrain the evolving shape to lie within a
+shape space targeted to the training set. Our approach attempts
+to discover more degrees of freedom, while keeping the shape
+prior faithful to the population under study by still captures existing correlation in the data at every scale.
+Next, we explain how to use the WDM with band decomposition prior into an active surface segmentation framework.
+V. SEGMENTATION WITH MULTISCALE PRIOR
+
+Fig. 13. Caudate dataset. (a) Max squared reconstruction error (averaged over
+testing shapes) for various training set sizes. (b) Max squared reconstruction
+error with noise projection for various training set sizes.
+
+prior to not be affected by the noise and the reconstructed shape
+to be close to the ground truth (the shape without noise). To test
+this, we project the noisy shape onto the priors, and calculate
+the mean squared error between the reconstructed shape and
+the ground truth shape.
+Figs. 12 and 13 show the maximum squared reconstruction
+error, averaged over all the shape in the testing set, for the
+various shape priors and various training set sizes of the hippocampus (Fig. 12) and caudate (Fig. 13) datasets. The left
+graph show the error using the ground truth as a projection
+onto the priors, the right graphs show the error using the noisy
+ground truth as a projection onto the priors (the error is then
+computed between the reconstructed shape and the original
+ground truth). As we can see in the graphs, the WDM prior with
+scale and band decomposition outperform the other techniques
+for all training set sizes. It is also interesting to see that all
+priors are minimally affected by Gaussian noise. Therefore,
+although the WDM prior with scale and band decomposition
+is more speciﬁc than PDM (meaning it represents a population
+more accurately), it is not more sensitive to noise.
+As an example, Fig. 14 shows the Ground Truth shape, Noisy
+shape, and reconstruction with PDM and wavelet shape priors
+with ten and 20 training samples for the hippocampus dataset.
+The ﬁgures show the reconstruction when the Ground Truth
+shape is projected onto the prior (column 1 and 3) and when the
+Noisy shape is projected onto the prior (column 2 and 4). We
+see that details that appear in the WDM are lacking in the PDM
+reconstruction, especially on the posterior side (thinner part of
+the shape). When comparing WDM with scale only and WDM
+with scale and band decomposition, we see that the latter has a
+smaller error and contains ﬁner details.
+
+In order to exploit the multiscale prior, we derive a parametric
+surface evolution equation by evolving the PCA shape coefﬁcients directly. As the surface evolves to ﬁt the image data,
+we constrain the weights to remain within 3 standard deviation of their values observed in the training set. The parameters
+of our model are the shape parameters , as well as pose parameters that accommodate for shape variability due to a similarity
+transformation (rotation, scale, translation) which is not explicitly modeled with the shape parameters.
+A. Pose Parameters
+Given a surface mesh with vertices
+,
+expressed in homogeneous coordinates so that a mesh point is
+, a transformed surface
+denoted by
+is deﬁned by
+(27)
+The transformation matrix
+is the product of a translation
+matrix with three parameters , , , a scaling matrix with one
+parameter , and a rotation matrix with three parameters , ,
+, using the exponential map formulation [47].
+B. Shape Parameters
+A surface point
+can be represented in the wavelet basis
+using the full formula (26)
+
+(28)
+
+rearranges a
+where the function
+matrix to have the correct homogeneous coordinates and
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+611
+
+Fig. 14. Reconstruction task for test shape using ten training shapes (ﬁrst two columns) and a test shape using 20 training shapes (last two columns).
+
+is a row vector of all the basis functions evaluated at point
+. The weight parameters
+(where is the
+total number of eigenvectors of the shape prior) are the shape
+parameters of our model.
+By combining (27) and (28), the shape to be evolved is
+(29)
+where we use the tilde notation
+
+to indicate that
+
+is evolving.
+
+C. Segmentation Energy
+The boundaries of the brain structures we are segmenting do
+not always exhibit a strong image intensity gradient. Therefore,
+using an edge-based force would not be sufﬁcient to drive a correct segmentation. Region-based energies have been developed
+to adress this issue, where the force that inﬂuences the evolution of a contour depends on more global statistical information
+[12], [13]. We use a discrete version of the region-based force
+based on learned intensity statistics from the training set [13]
+(30)
+
+where is the region inside the evolving surface and the force
+where
+is the image
+is
+intensity at a point located inside the region of the evolving
+surface,
+is the probability that a point with intensity
+belongs to the interior of an object to be segmented in
+is the probability that the point belongs to
+the image, and
+the exterior of the object to be segmented. The segmentation
+energy is minimized when the surface evolves to include points
+than
+).
+that have maximum (points that have a higher
+and
+from a
+To estimate the probability density functions
+training set, we collect sample voxel intensity values inside and
+
+outside the segmented shapes in a neighborhood of width ten
+pixels around the boundary and use Parzen windows [45].
+The surface evolution is deﬁned by a gradient ﬂow of that
+minimizes the energy in terms of the pose and shape parameters . We augment the parameters and with an artiﬁcial
+time parameter and ﬁnd gradient descent equations
+and
+by solving
+. We use the area formula [48] and then the divergence theorem to express the region
+integral in (30) as a surface integral and discretize the result to
+apply the result to a surface mesh (see Appendix B below for
+the full derivation). The gradient ﬂow with respect to each pose
+is given by
+parameter
+(31)
+with
+
+Here,
+denotes the inward normal of surface point
+expressed in homogeneous coordinates and the image force is
+evaluated at points on the surface boundary of .
+The gradient ﬂow with respect to each shape parameters
+is given by
+(32)
+where
+
+Note that for a given , the evolution equation is projecting
+(or
+the image measure onto the principal component
+
+612
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+more precisely its backward wavelet transform into the space
+. See Appendix B for all of the
+domain) corresponding to
+details of the derivation.
+D. Parameter Optimization via Multiresolution Gradient
+Descent
+We can now use the gradient (31) and (32) to conduct a parameter optimization via gradient descent. Explicitly, the update
+equations are
+(33)
+(34)
+and
+are positive step size parameters,
+is
+where
+is given in (32) and
+,
+given in (31), and
+denote the values of the parameters and at the
+th
+iteration of the surface evolution.
+We start with an initial shape and iterate between (33)
+parameters in a multiresolution
+and (34). We update the
+corresponds to a
+fashion. Since each shape parameter
+band at a wavelet scale , we ﬁrst only update coefﬁcients
+. Once the
+corresponding to the coarsest level bands
+coordinates of the evolving surface change less than a threshold
+(in millimeters), we add the parameters of the next
+value
+scale level to the gradient and update (34). This results in a
+more stable segmentation since few global parameters are ﬁrst
+updated when the shape is far from the solution and more
+localized parameters are added as the shape converges to the
+solution.
+where
+is the
+We start with (33) until
+evolving surface at time and is a threshold value in millimeters. We then run (34) for one iteration and iterate the process.
+At each iteration, we ensure that the value of the parameters stays within 3 standard deviation of the observed values
+in the training set. After each iteration, the updated shape and
+pose parameters are used to determine the updated surface.
+E. Results of Segmentation
+1) Experimental Setup: In this section, we test our segmentation algorithm that uses the region based force described in
+the previous section and evolves in the WDM shape prior space
+on the left caudate dataset and the left hippocampus dataset. We
+call this algorithm WDM/MSCALE. As a comparison, we also
+apply to the same dataset an active shape model (ASM) algorithm that uses the same region-based force but evolves in the
+PDM shape prior space (note that this is a modiﬁed version of
+the ASM algorithm published in [17] since we evolve the eigenvector weights directly instead of the mesh points). We call this
+algorithm PDM/ASM. We also test as a simple active contour
+algorithm that uses the same region-based force, but no shape
+prior, and call this algorithm NSP/AC (No shape Prior/Active
+Contour).
+For both the WDM/MSCALE and PDM/ASM algorithms,
+we use the same training, testing shapes, and keep 100% of
+the eigenvectors for both the PDM and WDM representation.
+The landmarks for ASM are the vertices of the surface, after
+remeshing and alignment. These are the same vertices used to
+
+Fig. 15. Inﬂuence of step size  on the mean error, using ﬁve test shapes for
+both PDM/ASM and WDM/MSCALE. x axis is value 1= .
+
+calculate the spherical wavelet coefﬁcients used for the WDM
+shape representation. The shape parameters for ASM are the
+weights of the principal components that result from a PDM
+analysis.
+Two main parameters of our technique are: 1) whether we
+truncate the coefﬁcients, as described in Section II and 2) the
+number of training shapes. We vary both (1) and (2) for our
+experiments.
+For the left caudate dataset and the left hippocampus, we
+learned a shape prior from varying sizes of training set shapes
+([5, 10, 24] for the caudate dataset and [10, 15] for the left hippocampus), with and without truncation, and used the remaining
+shapes as a test set. We use spherical wavelet basis functions of
+. We learned the mean position
+of the causcale up to
+date shapes in the MRI scans (in patient RAS coordinates, described in Appendix A). To initialize the segmentation, we use
+the mean caudate shape learned during the training phase and
+in the scan to be segmented.
+positioned it at position
+For all three algorithms, the threshold parameters were
+chosen to be small enough to test for convergence. We pick
+mm. The step size parameters ,
+also
+inﬂuence the convergence of the algorithm. Since we cannot
+directly interpret a change of value in terms of euclidean
+distance, we ran an experiment with ﬁve test shapes and a
+binary image (where the voxels inside the test shape are set to 1
+parameter to look
+and outside are set to 1) and varied the
+at its inﬂuence on the average mean error (in millimeters). The
+results are shown in Fig. 15 for the left caudate dataset, where
+. The ﬁgure shows that as
+the axis shows the value
+increases ( decreases), the error gets smaller, until
+for both WDM/MSCALE and PDM/ASM. After that value,
+the error value stabilizes. A similar analysis made us choose
+for translation and
+for
+parameters
+scale and rotation.
+To measure the discrepancy between segmented shape
+and ground truth (G) (obtained from the hand-segmented labelmaps), we use the Hausdorff distance
+that measures
+the maximum error between the boundary of two shapes and
+, as well as the average surface error for the two shapes and
+. Both the Hausdorff distance and average surface errors are
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+Fig. 16. Left caudate dataset: surface evolution using ground truth label-map
+as image force for PDM/ASM (top rown) and WDM/Mscale (bottom row) algorithms, with 24 training shapes. Ground truth is shown in red (light-gray if seen
+in grayscale), evolving surface in blue (dark gray if seen in grayscale). (a) ASM,
+iter = 1. (b) ASM, iter = 25. (c) ASM, iter = 122. (d) MSCALE, iter = 1.
+(e) MSCALE, iter = 96, levels 1–2 active. (f) MSCALE, iter = 122, levels
+1–5 active.
+
+averaged over all shapes of a test set to obtain a global error
+measure for a training set size.
+2) Results: To validate our algorithm, we ﬁrst use the Ground
+Truth label-map as the image force in (31) and (32) by replacing
+with a value of 1 inside the (known) object and 1 outside.
+The end goal is to validate whether the surface evolution converges to the right solution, given perfect image information.
+Since we are evolving in the space of the shape prior, the discrepancy between the PDM/ASM and WDM/Mscale algorithm
+is due to the expressiveness of the shape prior. Fig. 16 shows
+the result for the left caudate for a training set of 24 shapes.
+The ﬁnal segmentation with the multiscale prior captures more
+of the shape and ﬁner details than the ASM segmentation. Furthermore, we see that for as the scale level is increased for the
+parameters, the Mscale segmentation is able to capture ﬁner
+details. Fig. 17 shows the result for the left hippocampus for
+a training set of ten shapes. Again, the WDM/Mscale captures
+more details of the surface.
+To validate the full segmentation algorithm, we use the proposed image force in (30). The results of the validation for both
+algorithms are obtained by varying training set size and whether
+truncation is applied to the WDM shape prior or not. For a given
+training set size, the error is given as an average Hausdorff distance for all test cases in Fig. 20 for all algorithms and both
+structures. The error is also given as an average surface error
+for all test shapes in Fig. 21 for all algorithms and both structures.
+We see that in all cases, the three algorithms with a shape
+prior outperform the active contour evolution without a prior.
+The results also show that both the WDM/MSCALE algorithms
+(with and without truncation) consistently outperform the ASM
+algorithm. Overall, the MSCALE algorithm without truncation
+outperforms the MSCALE algorithm with the hausdorff error,
+but not for the average surface error measure. This difference
+is more pronounced for the caudate dataset and small training
+set sizes. We hypothesize that the maximum error is most affected by the truncation since most of the truncated coefﬁcients
+
+613
+
+Fig. 17. Left hippocampus dataset: surface evolution using ground truth
+label-map as image force for PDM/ASM (top row) and WDM/Mscale (bottom
+row) algorithms, with ten training shapes. Ground truth is shown in red
+(light-gray if seen in grayscale), evolving surface in blue (dark gray if seen in
+grayscale). (a) ASM, iter = 1. (b) ASM, iter = 50. (c) ASM, iter = 102. (d)
+MSCALE, iter = 1. (e) MSCALE, iter = 50, levels 1–2 active. (f) MSCALE,
+iter = 94, levels 1–5 active.
+
+Fig. 18. Left caudate dataset: surface evolution using density estimation as
+image force for ASM (top row) and Mscale (bottom row) algorithms, with 24
+training shapes. Ground truth is shown in red (light-gray if seen in grayscale),
+evolving surface in blue (dark gray if seen in grayscale). (a) ASM, iter = 1. (b)
+ASM, iter = 32. (c) ASM, iter = 202. (d) MSCALE, iter = 1. (e) MSCALE,
+iter = 150, levels 1–2 active. (f) MSCALE, iter = 202, levels 1–5 active.
+
+are at ﬁner (higher) scales and high frequency differences are
+more visible with a maximum operator than an averaging operator. However, the effect of truncation needs to be further investigated in future experiments. The results also show that overall
+the PDM/ASM error is more affected by the training set size
+than the MSCALE error, as previously reported in [4].
+Fig. 18 qualitatively compares the segmentation of the
+Left Caudate for a training set size of 24 shapes for both the
+PDM/ASM and WDM/MSCALE (with truncation) algorithms.
+The MSCALE algorithm is more accurate and captures ﬁner
+details, especially at the tail of the caudate. Fig. 19 compares the
+segmentation of the Left Hippocampus for a training set size of
+ten shapes for both the PDM/ASM and WDM/MSCALE (with
+truncation) algorithms. We see that the MSCALE algorithm
+result is closer to the Ground Truth than the PDM/ASM result.
+The results show that the MSCALE representation with more
+degrees of freedom than ASM/PDM is able to better segment
+
+614
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+Fig. 19. Left hippocampus dataset: surface evolution using density estimation
+as the image force for ASM (top row) and Mscale (bottom row) algorithms, with
+ten training shapes. Ground truth is shown in red (light-gray if seen in grayscale),
+evolving surface in blue (dark gray if seen in grayscale). (a) ASM, iter = 1. (b)
+ASM, iter = 134. (c) MSCALE, iter = 1. (d) MSCALE, iter = 102, levels
+1–5 active.
+
+the test data (in terms of mean squared distance to the ground
+truth). However, the results also show that although the evolution without shape prior has more degrees of freedom, it has a
+higher mean and Haussdorff error when compared to our technique. These results suggest that more degrees of freedom are
+better, as long as they still constrain the evolving shape to lie
+within a shape space targeted to the training set. In this paper,
+we propose one type of scale-space decomposition based on correlation of spherical wavelet coecients at a given scale. It would
+be interesting to experiment with other types of decomposition,
+basis functions or assuming more comperhaps using other
+plex probability distributions for the shape features and using
+higher moments for decomposition.
+We note that for both structures, the segmentation is not fully
+accurate due to nonperfect image statistics, meaning that that
+the statistics learned on the training set (the image term based
+,
+on , the probability of a voxel being inside the shape, and
+the probability of a voxel being outside the shape) do not perfectly delineate the shape in the testing sets. Some voxels that
+belong to the Ground Truth test shape have a higher probability
+of being outside the shape than inside, and therefore the image
+force at that pixel is erroneous. Finding better image statistics
+as region-based forces is an active area of research, and other
+image terms could easily be substituted or added to previously deﬁned. The main focus of this paper, however, is to see
+whether the WDM prior can help drive a more accurate segmentation than a PDM prior, for a given image force. Both segmentation algorithms run on average 1 to 2 min (depending on the
+number of iterations needed for convergence) on a Pentium IV
+2 GHz using nonoptimized MATLAB code and therefore have
+comparable running times. The prior computation time takes on
+average 1–2 min for PDM and 4–5 min for WDM for 20 shapes.
+VI. DISCUSSION
+By using the spherical wavelet transform as shape representation, we have been able to take advantage of two types of decomposition: scale decomposition by using the transform structure and space decomposition by clustering coefﬁcients based
+
+on correlation of the wavelet coefﬁcients for the data we are
+analysizing. We have demonstrated that our spherical wavelet
+based technique WDM is a better shape prior when used in a
+segmentation task than ordinary PDM. We note that if the WDM
+technique is applied to other anatomical structures where the
+decorrelation property does not exist at particular scales, our
+technique will nicely default to including all coefﬁcients from
+that scale into a single band.
+Using this representation and prior, we presented a
+coarse-to-ﬁne segmentation algorithm. Our results show
+that the proposed segmentation algorithm outperforms standard
+ASM. One advantage of the technique is the ability to evolve
+coarse scale parameters ﬁrst, in order to quickly bring the
+evolving shape close to the solution and then evolving ﬁner
+scale parameters to improve the ﬁt. The technique is general and
+can be used with any kind of prior based on WDM, regardless
+of the decompositions used.
+The general framework presented in this paper can be extended in several ways to beneﬁt shape analysis and segmentation. So far, we have focused on a region-based energy in the
+formulation of the active contour given the lack of strong gradients around boundaries of subcortical structures, but it would
+be interesting to combine region-based forces with edge-based
+forces for other types of structures with stronger edge information. Another area of research would be to use other types of
+nonlinear prior estimation techniques over the wavelet coefﬁcients, such as kernel PCA and generalized PCA. Additionally,
+our framework could be extended to implicit representations and
+a level set evolution by using standard 3-D wavelets directly on
+the grid. The scale-space decomposition algorithm to ﬁnd the
+bands, as well as the segmentation algorithm, would translate
+nicely to this new representation. The wavelet transform could
+also provide a high compression for the implicit representation,
+given the redundancy present in a distance transform, typically
+used to implicitly represent curves and surfaces.
+Our methodology ﬁnds independent shape variation processes at multiple scales and multiple locations by adaptively
+clustering correlated wavelet coefﬁcients at each scale into
+bands. This shape representation itself and the band structures
+can be very interesting for shape analysis and classiﬁcation. We
+can compare, for example, the band structures of a population
+with a neurological disease, versus a population without the
+disease. In our future work, we plan to investigate how the
+wavelet representation and the band structures can be used
+for classiﬁcation. Our representation can also help physicians
+visualize variations speciﬁc to brain structures for a given
+population, at various scale levels.
+APPENDIX A
+In this appendix, we show how to consistently pick three
+,
+) on each shape of the hipcorresponding points ( ,
+pocampus and caudate population in an automatic way. These
+three points will be used as boundary conditions of the conis mapped to the north pole of the
+formal mapping so that
+is mapped to the south pole, and
+to the point on
+sphere,
+the equator that intersects the Greenwich meridian. The steps
+are as follows.
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+615
+
+Fig. 20. Average Hausdorff error distance in millimeters, for all shapes of a test set, as a function of training set size for (a) left caudate and (b) left hippocampus
+dataset.
+
+Fig. 21. Average surface error distance in millimeters, for all shapes of a test set, as a function of training set size for (a) left caudate and (b) left hippocampus
+dataset.
+
+1) Let
+be a mesh in RAS patient coordinate
+points denoted
+. The RAS cospace, with
+ordinate space signiﬁes that the ﬁrst axis is the patient’s
+left–right (LR) where left is negative and right is positive,
+the second axis is the patient’s posterior–anterior (PA), and
+the third axis is the patient’s inferior–superior (SI).
+be the sum of one2) For each point on the mesh, let
+third of the triangles’ area that have at its vertex. Hence,
+measures the portion of surface area attributed to
+vertex .
+3) Calculate the weighted mean of the surface
+
+5) Extract the principal axes of the shape by ﬁnding the eigenmeans we
+vectors of the weighted moment tensor (
+coordinate of )
+are taking the
+
+(37)
+
+(38)
+(39)
+
+(35)
+4) Center shape
+
+around its mean
+(36)
+
+,
+,
+6) Reorder the eigenvectors to at most
+. The axes are shown in Fig. 22 for three hippocampus
+and three caudate shapes. The magenta axis is LR, the blue
+axis is PA, and the green axis is IS.
+be the farthest surface point from the center of the
+7) Let
+shape in the A direction of the PA axis (shown in blue in
+
+616
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+and
+-weighted volumes:
+
+, we deﬁne the following family of
+(40)
+
+(41)
+where
+is the determinant of the Jacobian resulting from the
+change of variables. Notice that the ﬁrst integral depends on ,
+whereas the second integral does not depend on via a change
+of variables [48].
+Setting
+Fig. 22. Example of principal axes and three points x , x , and x found on
+three left hippocampus and left caudate shapes.
+
+(42)
+
+(43)
+
+(44)
+
+(45)
+
+(46)
+Fig. 23. New point x is found such that it is the farthest point on mesh from
+x (in geodesic distance) for three left hippocampus and left caudate shapes
+shown in Fig. 22.
+
+(47)
+
+(48)
+Fig. 22) and
+be the surface point in the P direction of the
+be the surface
+PA axis (shown in yellow in Fig. 22) and
+point in the L direction of the LR axis (shown in magenta
+in Fig. 22).
+and
+should be as far as possible, we
+8) Since the
+location to be the farthest point (in geodesic
+change the
+. The distance is calculated on the
+distance) from
+mesh, using Dijkstra’s algorithm as an approximation of
+the geodesic distance. We show the result of this step on
+Fig. 23 for the same six shapes.
+
+where we used a Taylor series expansion
+so that
+Then, using the divergence theorem
+
+.
+
+(49)
+
+(50)
+
+(51)
+APPENDIX B
+In this appendix, we give the main results of the volumeweighted gradient ﬂow in [49] and [50]. Note that this derivation applies to dimensions, but here we take the special case
+. Let be an open connected bounded subset of
+(the
+region inside the surface) with smooth boundary (the surface).
+Let
+be a family of embeddings, such that
+is the identity.
+Here, we consider the case where the given surfaces depend
+be a
+upon a parameter that varies with time. Let
+function. Setting for
+and
+
+(52)
+
+(53)
+
+(54)
+where
+
+is the inward normal to
+
+.
+
+NAIN et al.: MULTISCALE 3-D SHAPE REPRESENTATION AND SEGMENTATION USING SPHERICAL WAVELETS
+
+To minimize , and discretizing the result to deal with mesh
+surfaces, we obtain
+
+(55)
+
+ACKNOWLEDGMENT
+The authors would like to thank M. Niethammer, E. Pichon,
+and the members of the MINERVA Biomedical Imaging Lab
+and the GVU Lab at Georgia Tech for their helpful suggestions
+and feedback throughout this work as well as the anonymous
+reviewers for their useful comment on drafts of this article. Information on the National Centers for Biomedical Computing
+can be obtained from http://www.nihroadmap.nih.gov/bioinformatics.
+REFERENCES
+[1] NAMIC website, National Alliance for Medical Image Computing
+[Online]. Available: http://www.na-mic.org
+[2] J. J. Levitt, R. W. McCarley, C. C. Dickey, M. M. Voglmaier, M. A.
+Niznikiewicz, L. J. Seidman, Y. Hirayasu, A. A. Ciszewski, R. Kikinis,
+F. A. Jolesz, and M. E. Shenton, “MRI study of caudate nucleus volume
+and its cognitive correlates in neuroleptic-naive patients with schizotypal personality disorder,” Amer. J. Psychiatry, vol. 159, no. 7, pp.
+1190–1197, 2002.
+[3] J. J. Levitt, C.-F. Westin, P. G. Nestor, R. San-Jose, C. C. Dickey, M.
+M. Voglmaier, L. J. Seidman, R. Kikinis, F. A. Jolesz, R. W. McCarley,
+and M. E. Shenton, “Shape of the caudate nucleus and its cognitive correlates in neuroleptic-naive schizotypal personality disorder,” Biological Psychiatry, vol. 55, pp. 177–184, 2004.
+[4] S. Xu, M. Styner, B. Davis, S. Joshi, and G. Gerig, “Group mean differences of voxel and surface objects via nonlinear averaging,” in Proc.
+IEEE Symp. Biomedical Imaging, , 2006, pp. 758–761.
+[5] M. Styner, J. A. Lieberman, D. Pantazis, and G. Gerig, “Boundary
+and medial shape analysis of the hippocampus in schizophrenia,” Med.
+Image Anal., vol. 8, no. 3, pp. 197–203, 2004.
+[6] Wikipedia, Caudate Nucleus [Online]. Available: http://www.en.
+wikipedia.org/wiki/Caudate Last Accessed on, May 15, 2006
+[7] , Hippocampus [Online]. Available: http://www.en.wikipedia.org/
+wiki/Hippocampus May 15, 2006
+[8] S. Vetsa, M. Styner, S. Pizer, J. Lieberman, and G. Gerig, “Caudate
+shape discrimination in schizophrenia using template-free non-parametric tests,” in Proc. 6th Int. Conf. Med. Image Computing Computer-Assisted Intervention (MIC-CAI), Montreal, QC, Canada, 2003,
+pp. 661–669.
+[9] C. Xu, D. L. Pham, and J. L. Prince, “Medical image segmentation
+using deformable models,” in Handbook of Medical Imaging. New
+York: SPIE Press, May 2000, vol. 2, pp. 129–174.
+[10] T. F. Cootes and C. J. Taylor, “Combining point distribution models
+with shape models based on ﬁnite element analysis,” Image Vis.
+Comput., vol. 13, no. 5, p. 4039, 1995.
+[11] M. Leventon, E. Grimson, and O. Faugeras, “Statistical shape inﬂuence in geodesic active contours,” in CVPR, Jun. 2000, vol. 2, pp.
+1316–1325.
+[12] A. Tsai, A. J. Yezzi, W. M. Wells, III, C. Tempany, D. Tucker, A. Fan,
+W. E. L. Crimson, and A. S. Willsky, “A shape-based approach to the
+segmentation of medical imagery using level sets,” IEEE Trans. Med.
+Imag., vol. 22, no. 2, pp. 137–154, Feb. 2003.
+[13] M. Rousson and D. Cremers, “Efﬁcient kernel density estimation of
+shape and intensity priors for level set segmentation,” in Proc. 8th Int.
+Conf. Med. Image Comput. Computer-Assisted Intervention (MICCAI),
+2005, vol. 3750, pp. 757–764.
+[14] C. Davatzikos, X. Tao, and D. Shen, “Hierarchical active shape models,
+using the wavelet transform,” IEEE Trans. Med. Imag., vol. 22, no. 3,
+pp. 414–423, Mar. 2003.
+[15] D. Nain, S. Haker, A. Bobick, and A. Tannenbaum, “Multiscale 3D
+shape analysis using spherical wavelets,” in Proc. 8th Int. Conf. Medical Image Computing Computer-Assisted Intervention (MICCAI),
+2005, vol. 3750, LNCS, pp. 459–467.
+
+617
+
+[16] ——, Shape-Driven Surface Segmentation Using Spherical Wavelets,
+pp. 66–74, 2006.
+[17] T. F. Cootes, C. J. Taylor, D. H. Cooper, and J. Graham, “Active shape
+models—Their training and application,” Computer Vision and Image
+Understanding, vol. 61, no. 1, pp. 38–59, 1995.
+[18] L. H. Staib and J. S. Duncan, “Deformable fourier models for surface
+ﬁnding in 3D images,” in Proc. 2nd Conf. Vis. Biomed. Computing,
+1992, vol. 1808, pp. 90–104.
+[19] C. Brechbühler, G. Gerig, and O. Kübler, “Parametrization of closed
+surfaces for 3D shape description,” CVIU, vol. 61, no. 2, pp. 154–170,
+Mar. 1995.
+[20] P. Yu, F. Segonne, X. Han, and B. Fischl, “Shape analysis of neuroanatomical structures based on spherical wavelets,” in Human Brain
+Mapping (HBM), 2005, vol. 1, pp. 320–323.
+[21] P. Yu, X. Han, F. Segonne, R. L. Buckner, R. Pienaar, P.
+Golland, P. E. Grant, and B. Fischl, “Cortical surface shape
+analysis based on spherical wavelet transformation,” in Proc.
+IEEE Computer Soc. Workshop Math. Methods Biomed. Image
+Anal. (MMBIA), Jun. 2006.
+[22] I. R. Greenshields, “3D shape approximants via spherical wavelet decompositions,” in Proc. 14th Symp. Computer-Based Med. Syst., 2001,
+p. 31.
+[23] S. Jaume, M. Ferrant, A. Schreyer, L. Hoyte, B. Macq, J. R. Fielding,
+R. Kikinis, and S. K. Warﬁeld, “Multiresolution signal processing on
+meshes for automatic pathological shape characterization,” in Proc.
+4th Int. Conf. Med. Image Computing Computer-Assisted Intervention
+(MICCAI), 2001, vol. 2208, LNCS, pp. 1398–1400.
+[24] T. McInerney and D. Terzopoulos, “Deformable models in medical
+image analysis: A survey,” Med. Image Anal., vol. 1, no. 2, pp. 91–108,
+1996.
+[25] R. T. Whitaker, “Volumetric deformable models: Active blobs,” Visualization Biomed. Comput., pp. 122–134, 1994.
+[26] J. Sethian, R. Malladi, and B. Vemuri, “Shape modeling with front
+propagation: A level set approach,” IEEE Trans. Pattern Anal. Mach.
+Intell., vol. 17, no. 2, pp. 158–175, Feb. 1995.
+[27] V. Caselles, R. Kimmel, and G. Sapiro, “Geodesic active contours,”
+Int. J. Computer Vision, vol. 22, no. 11, pp. 61–79, 1997.
+[28] S. Kichenassamy, A. Kumar, P. Olver, A. Tannenbaum, and A.
+Yezzi, “Conformal curvature ﬂows: From phase transitions to active
+contours,” Arch. Rational Mechanics Anal., vol. 134, pp. 275–301,
+1996.
+[29] S. Osher and R. Fedkiw, Level Set Methods and Dynamic Implicit Surfaces. New York: Springer Verlag, 2002.
+[30] J. A. Sethian, Level Set Methods and Fast Marching Methods. Cambridge, U.K.: Cambridge Univ. Press, 1999.
+[31] S. C. Zhu and A. Yuille, “Region competition: Unifying snakes, region growing, and bayes/mdl for multiband image segmentation,” IEEE
+Trans. Pattern Anal. Mach. Intell., vol. 18, no. 9, pp. 884–900, Sep.
+1996.
+[32] T. F. Chan, J. Shen, and L. Vese, “Variational pde models in image
+processing,” Notice AMS, vol. 50, no. 1, pp. 14–26, Jan. 2003.
+[33] A. Yezzi, Jr., A. Tsai, and A. Willsky, “A fully global approach to
+image segmentation via coupled curve evolution equations,” J. Vis.
+Comm. Im. Rep., vol. 13, pp. 195–216, 2002.
+[34] M. Kass, A. Witkin, and D. Terzopoulos, “Snakes: Active contour
+models,” Int. J. Comput. Vis., vol. 1, no. 4, pp. 321–331, 1987.
+[35] D. Terzopoulos and D. Metaxas, “Dynamic 3D models with local and
+global deformations: Deformable superquadrics,” IEEE Trans. Pat.
+Anal. Mach. Intell., vol. 13, no. 7, pp. 703–714, Jul. 1991.
+[36] S. Mallat, Wavelet Tour of Signal Processing. New York: Academic,
+1999.
+[37] P. Schröder and W. Sweldens, “Spherical wavelets: Efﬁciently representing functions on the sphere,” in Proc. Computer Graphics Proc.
+(SIGGRAPH 95), 1995, pp. 161–172.
+[38] P. Schröder and W. Sweldens, “Spherical wavelets: Texture processing,” in Rendering Techniques ’95, New York, 1995, Springer
+Verlag.
+[39] S. Angenent, S. Haker, A. Tannenbaum, and R. Kikinis, “Laplacebeltrami operator and brain surface ﬂattening,” IEEE Trans. Medical
+Imag., vol. 18, no. 8, pp. 700–711, Aug. 1999.
+[40] S. Haker, S. Warﬁeld, and C. Tempany, Landmark-Guided Surface
+Matching and Volumetric Warping for Improved Prostate Biopsy Targeting and Guidance. New York: Springer, Lecture Notes in Computer Science, , vol. 3216, pp. 853–861, 2004.
+[41] B. Fischl, M. I. Sereno, and A. M. Dale, “Cortical surface-based analysis ii: Inﬂation, ﬂattening, and a surface-based coordinate system,”
+NeuroImage, vol. 9, pp. 195–207, 1999.
+
+618
+
+IEEE TRANSACTIONS ON MEDICAL IMAGING, VOL. 26, NO. 4, APRIL 2007
+
+[42] M. K. Hurdal and K. Stephenson, “Cortical cartography using the discrete conformal approach of circle packings,” NeuroImage, vol. 23, pp.
+119–128, 2004.
+[43] L. Ju, J. Stern, K. Rehm, K. Schaper, M. Hurdal, and D. Rottenberg,
+“Cortical surface ﬂattening using least square conformal mapping
+with minimal metric distortion,” in Proc. 2nd IEEE Int. Symp. Biomed.
+Imag., 2004, pp. 77–80.
+[44] X. Gu, Y. Wang, T. F. Chan, P. M. Thompson, and S. T. Yau, “Genus
+zero surface conformal mapping and its application to brain surface
+mapping,” IEEE Trans. Med. Imag., vol. 23, no. 8, pp. 949–958, Aug.
+2004.
+[45] R. Duda, P. Hart, and D. Stork, Patten Classiﬁcation. New York:
+Wiley-Interscience, 2001.
+[46] J. Shi and J. Malik, “Normalized cuts and image segmentation,”
+IEEE Trans. Pattern Analysis Machine Intelligence, vol. 22, no. 8, pp.
+888–905, Aug. 2000.
+
+[47] V. Lepetit and P. Fua, Foundations and Trends in Computer Graphics
+and Vision. Hanover, MA: Now, 2005, vol. 1, pp. 1–89.
+[48] L. Simon, Lectures on geometric measure theory. Proceeding of
+the Centre for Mathematical Analysis, Canberra: Australian National
+Univ., 1983.
+[49] E. Pichon, A. Tannenbaum, and R. Kikinis, “A statistically based ﬂow
+for image segmentation,” Med. Image Anal., vol. 8, no. 3, pp. 267–274,
+Sep. 2004.
+[50] K. Siddiqi, Y. Lauziere, A. Tannenbaum, and S. Zucker, “Area and
+length minimizing ﬂows for shape segmentation,” IEEE Trans. Med.
+Imaging, vol. 7, no. 4, pp. 433–443, Apr. 1998.
+
+
