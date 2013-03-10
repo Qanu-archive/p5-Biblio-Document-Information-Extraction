@@ -22,25 +22,6 @@ use Biblio::Document::Information::Extraction::Format::PDF;
 #cam_getfonts();
 #pdf_object();
 test_encoding_pdf();
-#test_backslash_parse();
-
-sub test_backslash_parse {
-	#my $str = '[(\050\134\051)]TJ';
-	#my $str = '[(a\134b)]TJ';
-	#my $str = '[(a\\\\b)]TJ';
-	for my $str (q{(\134)}, q{(\\\\)}) {
-		is( CAM::PDF->parseAny(\$str)->{value}, '\\' , "parsing: $str");
-	}
-	my $str = '(a\n\134'.'\\\\'.'\nb)';
-	is( CAM::PDF->parseAny(\$str)->{value}, "a\n\\\\\nb" , "parsing: $str");
-		#use DDP; p $str;
-		#my $node = CAM::PDF->parseAny(\$str);
-		#use DDP; p($node);
-	#use DDP; &p([length $node->{value}[0]{value}]);
-	
-}
-
-
 
 sub test_encoding_pdf {
 	my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/fi.pdf";
