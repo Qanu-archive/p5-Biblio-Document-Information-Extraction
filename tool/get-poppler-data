@@ -1,0 +1,24 @@
+#!/bin/bash
+function usage () {
+	echo "$0 [poppler source directory]"
+}
+
+POPPLER_TOPLEVEL=$1
+if [ -z "$POPPLER_TOPLEVEL" ] || [ ! -d "$POPPLER_TOPLEVEL" ]; then
+	usage
+	exit 1
+fi
+
+MAPFILE="$POPPLER_TOPLEVEL/poppler/NameToUnicodeTable.h"
+ENCTABFILE="$POPPLER_TOPLEVEL/poppler/FontEncodingTables.cc"
+MAPFILE_TARGET="data/NameToUnicodeTable.h"
+ENCTABFILE_TARGET="data/FontEncodingTables.cc"
+if [ -r "$MAPFILE" ]; then
+	cp -p "$MAPFILE" "$MAPFILE_TARGET"
+	cp -p "$ENCTABFILE" "$ENCTABFILE_TARGET"
+else
+	usage
+	exit 1
+fi
+
+

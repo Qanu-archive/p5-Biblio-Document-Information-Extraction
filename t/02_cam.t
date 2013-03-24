@@ -22,15 +22,48 @@ use Biblio::Document::Information::Extraction::Format::PDF;
 #cam_getfonts();
 #pdf_object();
 test_encoding_pdf();
+#cam_getpagetext();
+#cam_tranversecontenttree();
 
 sub test_encoding_pdf {
-	my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/fi.pdf";
+	#my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/fi.pdf";
 	#my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/quote.pdf";
-	#my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/paren.pdf";
+	my $fname = "$ENV{HOME}/sw_projects/doc_reader/test_pdf/paren.pdf";
 	my $pdf = CAM::PDF->new($fname);
+	use DDP; p $pdf;
 	my $o = Biblio::Document::Information::Extraction::Format::PDF->new( pdf => $pdf );
-	use DDP; p $o->get_page(1)->content_tree;
-	use DDP; p $o->get_page(1)->dump_text_fonts;
+
+	#use DDP; p $o->get_page(1)->content_tree;
+
+
+	my $fonts = [$o->pdf->getFonts(1)]; 
+	for my $font (@$fonts) {
+		use PostScript::Font;
+		use File::Slurp qw/write_file/;
+		use File::Temp;
+
+		my $data = Biblio::Document::Information::Extraction::Format::PDF::Util
+			->get_font_fontfile_data_stream($o->pdf, $font);
+		my $fh = File::Temp->new;
+		write_file($fh->filename, $data);
+		my $ps_font = PostScript::Font->new( $fh->filename );
+		use DDP; p $ps_font->Encoding;
+	}
+
+	#for my $objectNum (keys $o->pdf->{xref}) {
+		#my $object = $o->pdf->dereference($objectNum);
+		#$o->pdf->decodeAll($object);
+		#use DDP; p $object;
+	#}
+
+	#my $data = $o->pdf->dereference(10);
+	#$o->pdf->decodeAll($data);
+	#use DDP; p $data;
+
+	#use DDP; p $o->pdf;
+	#use DDP; p $o->get_page(1)->dump_text_fonts;
+	use DDP; p $o->get_page(1)->fonts;
+	use DDP; p $o->get_page(1)->dump_text_fonts_charset_conv;
 	#my $font = $o->pdf->dereference("/F8", 1);
 	#use DDP; p $font;
 	for my $str ( @{$o->get_page(1)->dump_text_fonts()->[0]{text}} ) {
@@ -108,15 +141,15 @@ sub cam_tranversecontenttree {
 			my ($visitor, $data) = @_;
 			$object_types->insert( lc $data->{type} ) if exists $data->{type};
 			$name_types->insert( lc $data->{name} ) if exists $data->{name};
-			#use DDP; p $data;
-			#if(exists $data->{type} and $data->{type} eq 'op' and "\L$data->{name}" eq "\LTJ") {
-				#print "$data->{name}\n";
-				##push @column_defs_cols, $data->{value} if exists $data->{value};
-				##$visitor->visit($_) for values $data; # recurse
-				#$visitor->visit($_->{value}) for values $data->{args}; # recurse
-			#} else {
-				#$visitor->visit($_) for $data->{args}; # recurse
-			#}
+			use DDP; p $data;
+			if(exists $data->{type} and $data->{type} eq 'op' and "\L$data->{name}" eq "\LTJ") {
+				print "$data->{name}\n";
+				#push @column_defs_cols, $data->{value} if exists $data->{value};
+				#$visitor->visit($_) for values $data; # recurse
+				$visitor->visit($_->{value}) for values $data->{args}; # recurse
+			} else {
+				$visitor->visit($_) for $data->{args}; # recurse
+			}
 			$visitor->visit($_->{args});
 			$visitor->visit($_->{value});
 		},
@@ -127,11 +160,11 @@ sub cam_tranversecontenttree {
 			}
 		}
 	);
-	use DDP; p $pagetree;
+	#use DDP; p $pagetree;
 	$v->visit($pagetree->{blocks});
 	print "$object_types\n";
 	print "$name_types\n";
-	#use DDP; p $pagetree->{blocks};
+	use DDP; p $pagetree->{blocks};
 }
 
 sub cam_getpagetext {

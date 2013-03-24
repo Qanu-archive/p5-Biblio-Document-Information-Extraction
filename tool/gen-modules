@@ -1,0 +1,134 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use File::Spec;
+use Text::Template;
+use IO::File;
+use Data::Dumper; 
+use File::Slurp qw/write_file/;
+
+$Data::Dumper::Terse = 1;        # no $VARn prefix
+
+my $data_dir = File::Spec->catfile( $FindBin::Bin, "..", "data" );
+my $lib_dir = File::Spec->catfile( $FindBin::Bin, "..", "lib" );
+
+my $unimap_c = File::Spec->catfile( $data_dir, "NameToUnicodeTable.h" );
+my $unimap_c_fh = IO::File->new($unimap_c, "r") or die $!;
+my $unimap_pl = File::Spec->catfile( $lib_dir,
+	qw/Biblio Document Information Extraction Format PDF/,
+	'NameToUnicodeTable.pm' );
+my $rc;
+my $symbol_to_unicode;
+while( my $line = <$unimap_c_fh> ) {
+	if ( $rc = $line =~ /\Q} nameToUnicodeTab[] = {\E/ .. eof($unimap_c_fh)
+		and $rc !~ /(^1|E0)$/ ) {
+		if($line =~ /{(0x[0-9a-f]+), "(.*)"}/) {
+			my ($hex_str, $name_str) = ($1, $2);
+			$symbol_to_unicode->{eval_str($name_str)} = hex($hex_str);
+		}
+	}
+}
+
+write_file( $unimap_pl, <<EOM );
+package Biblio::Document::Information::Extraction::Format::PDF::NameToUnicodeTable;
+
+# NOTE: this is file is generated from data/NameToUnicodeTable.h,
+# c.f. tool/gen-modules
+
+use strict;
+use warnings;
+use utf8::all;
+
+our \$table = @{[Dumper($symbol_to_unicode)]};
+
+sub get_unicode {
+	my (\$self, \$symbol) = \@_;
+	return chr(\$table->{\$symbol});
+}
+
+EOM
+
+my $encdir_pl = File::Spec->catfile( $lib_dir,
+	qw/Biblio Document Information Extraction Format PDF Encoding Builtin/);
+my $fenctab_c = File::Spec->catfile( $data_dir, "FontEncodingTables.cc" );
+my $fenctab_c_fh = IO::File->new($fenctab_c, "r") or die $!;
+my $enc;
+while( my $line = <$fenctab_c_fh> ) {
+	$_ = $line;
+	if(/\Qconst char *macRomanEncoding[256] = {\E/ .. $line =~ /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{MacRoman}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *macExpertEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{MacExpert}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *winAnsiEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{WinANSI}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *standardEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{Standard}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *expertEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{Expert}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *symbolEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{Symbol}{table}}, enc_line($line);
+	}
+	if(/\Qconst char *zapfDingbatsEncoding[256] = {\E/ .. /};/) {
+		next if $line =~ /const char|}/;
+		push @{$enc->{ZapfDingbats}{table}}, enc_line($line);
+	}
+}
+die "Not enough encodings" unless keys $enc == 7;
+$enc->{$_} == 256 and die "Encoding $_ does not have enough characters" for keys $enc;
+for my $encoding (keys $enc) {
+	$enc->{$encoding}{file} = File::Spec->catfile($encdir_pl, "$encoding.pm");
+	$enc->{$encoding}{package} = "Biblio::Document::Information::Extraction::Format::PDF::Encoding::Builtin::$encoding";
+	write_file( $enc->{$encoding}{file}, <<EOM );
+package $enc->{$encoding}{package};
+
+# NOTE: this is file is generated from data/FontEncodingTables.cc,
+# c.f. tool/gen-modules
+
+use strict;
+use warnings;
+use utf8::all;
+use Moo;
+
+with qw(Biblio::Document::Information::Extraction::Format::PDF::Encoding);
+
+our \$encoding_table = @{[Dumper($enc->{$encoding}{table})]};
+
+sub char_to_symbol {
+	my (\$self, \$char) = \@_;
+	\$$enc->{$encoding}{package}::encoding_table->[ord(\$char)];
+}
+
+EOM
+}
+
+
+
+sub enc_line {
+	my ($line) = @_;
+	if($line =~ /"(.*)"/) {
+		my $str = $1;
+		return eval_str($str);
+	} elsif($line =~ /NULL/) {
+		return ".notdef";
+	}
+}
+
+sub eval_str {
+	my ($name_str) = @_;
+	$name_str = eval "\"$name_str\"" if $name_str =~ /\\/; # for \" and \\
+	$name_str;
+}
