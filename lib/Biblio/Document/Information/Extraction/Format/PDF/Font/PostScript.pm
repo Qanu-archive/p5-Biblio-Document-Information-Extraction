@@ -30,3 +30,9 @@ sub _get_encoding_table {
 }
 
 1;
+
+=head1
+
+Biblio::Document::Information::Extraction::Format::PDF::Font::PostScript - load a PostScript font
+
+=cut

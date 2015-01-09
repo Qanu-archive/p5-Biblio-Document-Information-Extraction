@@ -14,3 +14,9 @@ sub char_to_symbol {
 }
 
 1;
+
+=head1 NAME
+
+Biblio::Document::Information::Extraction::Format::PDF::Encoding::PostScript - stores the encoding for a TrueType font
+
+=cut

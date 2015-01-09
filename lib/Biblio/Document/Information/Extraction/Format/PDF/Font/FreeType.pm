@@ -33,3 +33,9 @@ sub _build_font {
 
 
 1;
+
+=head1
+
+Biblio::Document::Information::Extraction::Format::PDF::Font::FreeType - load a TrueType font using FreeType
+
+=cut

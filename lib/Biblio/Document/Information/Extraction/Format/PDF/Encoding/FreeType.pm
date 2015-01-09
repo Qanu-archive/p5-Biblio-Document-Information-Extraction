@@ -33,3 +33,9 @@ sub decode_string {
 
 
 1;
+
+=head1 NAME
+
+Biblio::Document::Information::Extraction::Format::PDF::Encoding::FreeType - stores the encoding for a TrueType font
+
+=cut

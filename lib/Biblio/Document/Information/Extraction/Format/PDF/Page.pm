@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use 5.010.1;
 use Moo;
+use Data::Visitor;
 use Data::Visitor::Callback;
 use aliased 'Biblio::Document::Information::Extraction::Format::PDF::Font::PostScript' => 'PDF::Font::PostScript';
 use aliased 'Biblio::Document::Information::Extraction::Format::PDF::Font::FreeType' => 'PDF::Font::FreeType';
@@ -25,6 +26,11 @@ sub _build_fonts {
 sub _build_page_size {
 	my ($self) = @_;
 	$self->content_tree->{refs}{mediabox};
+}
+
+sub render {
+	my ($self, $strategy) = @_;
+	$strategy->visit($self->content_tree->{blocks});
 }
 
 sub get_font {
@@ -82,7 +88,6 @@ sub get_text_parts {
 	$v->visit($self->content_tree->{blocks});
 	$text_parts;
 }
-
 
 sub dump_text_fonts {
 	my ($self) = @_;

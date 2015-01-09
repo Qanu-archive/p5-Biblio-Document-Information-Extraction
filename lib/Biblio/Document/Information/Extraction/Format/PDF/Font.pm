@@ -13,3 +13,9 @@ has encoding => ( is => 'lazy' );
 sub width_of_character { my ($self, $char) = @_; undef }
 
 1;
+
+=head1
+
+Biblio::Document::Information::Extraction::Format::PDF::Font - role used to store font information
+
+=cut
