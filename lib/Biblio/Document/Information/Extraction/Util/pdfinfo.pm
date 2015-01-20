@@ -5,17 +5,20 @@ use warnings;
 
 use IPC::Run3;
 
-=method pdfinfo( %arguments )
+=method pdfinfo
+
+pdfinfo( %arguments )
 
 Returns a HashRef of data from the C<pdfinfo> command.
 
-C<%arguments>
+The C<%arguments> can be either read from a file path or from a PDF content in
+a string by indicating which on using the key-value pairs
 
 =over 4
 
-=item * file => $filepath
+=item * C<file => $filepath> to use a file path or
 
-=item * stream => $pdf_content
+=item * C<stream => $pdf_content> to use PDF content in a string.
 
 =back
 
