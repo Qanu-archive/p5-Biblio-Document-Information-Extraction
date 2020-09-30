@@ -105,6 +105,7 @@ method _pdf_to_png_mudraw (
 	my $fh = File::Temp->new( SUFFIX => '.png' );
 	my $cmd = [ "mudraw",
 		"-r", $density,
+		"-b", 8, # bits of anti-aliasing
 		"-o", $fh->filename,
 		"$pdf_file", "$page_number" ];
 	my $ret = system( @$cmd );
